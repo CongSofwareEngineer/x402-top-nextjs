@@ -1,4 +1,4 @@
-import { PRICES_USD } from "@/config/x402";
+import { DOMAIN, PRICES_USD } from "@/config/x402";
 import { NextRequest, NextResponse } from "next/server";
 
 export const PAY_LABEL = "X402 Top Agent Gateway Fee";
@@ -20,7 +20,8 @@ const PAID_ROUTES = [
     path: "/api/send-token",
     operationId: "sendToken",
     summary: "Send Token — cover the autonomous agent send token fee",
-    description: "Cover the gateway fee for an autonomous send token operation.",
+    description:
+      "Cover the gateway fee for an autonomous send token operation.",
     price: PRICES_USD["send-token"],
   },
 ] as const;
@@ -77,18 +78,7 @@ function paidOperation(route: (typeof PAID_ROUTES)[number]) {
 // site URL, then Vercel's injected production domain, then the forwarded host
 // the proxy actually served, and only fall back to the request URL in dev.
 function resolveOrigin(req: NextRequest) {
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, "");
-  }
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  }
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-  if (host) {
-    const proto = req.headers.get("x-forwarded-proto") ?? "https";
-    return `${proto}://${host}`;
-  }
-  return req.nextUrl.origin;
+  return DOMAIN;
 }
 
 // Canonical machine-readable contract, served at GET /openapi.json. This is the
