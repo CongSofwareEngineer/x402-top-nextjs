@@ -19,7 +19,6 @@
  *   from the CDP faucet on startup. See the x402 examples README for funding
  *   options and env vars.
  */
-import "dotenv/config";
 
 import { CdpClient } from "@coinbase/cdp-sdk";
 import { CdpX402Client } from "@coinbase/cdp-sdk/x402";
@@ -32,6 +31,8 @@ async function main() {
   // it now, so we know which address to fund before paying.
   // "development" registers Base Sepolia, since this example pays there.
   const client = new CdpX402Client({ environment: "production" });
+  console.log({ client });
+
   const { evmAddress, svmAddress } = await client.getAddresses();
 
   console.log("X402 TOP AGENT client ready");

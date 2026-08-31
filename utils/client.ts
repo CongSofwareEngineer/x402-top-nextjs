@@ -19,7 +19,6 @@
  *   from the CDP faucet on startup. See the x402 examples README for funding
  *   options and env vars.
  */
-import "dotenv/config";
 
 import { CdpClient } from "@coinbase/cdp-sdk";
 import { CdpX402Client } from "@coinbase/cdp-sdk/x402";

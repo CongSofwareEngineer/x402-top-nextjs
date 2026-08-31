@@ -2723,6 +2723,16 @@
     "@x402/core" "~2.24.0"
     "@x402/extensions" "~2.24.0"
 
+"@x402/svm@^2.24.0":
+  version "2.24.0"
+  resolved "https://registry.yarnpkg.com/@x402/svm/-/svm-2.24.0.tgz#f9c04683625f70853fdab0c95af4305ac5fff52b"
+  integrity sha512-j/2ARlUaDipqGyMuQOCbxSr+Pr7sANsksL1HXMCqYmTnNhX8BqZGIYTXNxbkNON47QKaojSdRckXwHwX0oIVrg==
+  dependencies:
+    "@solana-program/compute-budget" "^0.11.0"
+    "@solana-program/token" "^0.9.0"
+    "@solana-program/token-2022" "^0.6.1"
+    "@x402/core" "~2.24.0"
+
 abitype@1.0.6:
   version "1.0.6"
   resolved "https://registry.yarnpkg.com/abitype/-/abitype-1.0.6.tgz#76410903e1d88e34f1362746e2d407513c38565b"
