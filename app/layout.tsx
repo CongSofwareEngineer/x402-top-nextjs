@@ -1,10 +1,12 @@
+import "./globals.css";
+import AppkitProvider from "@/component/AppkitProvider";
 import { DOMAIN } from "@/config/x402";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
 
 // Social crawlers need absolute image URLs. Prefer an explicit site URL, then
 // the deployment URL Vercel injects, and fall back to localhost for dev.
- 
 
 export const metadata: Metadata = {
   metadataBase: new URL(DOMAIN),
@@ -22,10 +24,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const headersObj = await headers();
+  const cookies = headersObj.get("cookie");
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AppkitProvider cookies={cookies}>{children}</AppkitProvider>
+      </body>
     </html>
   );
 }

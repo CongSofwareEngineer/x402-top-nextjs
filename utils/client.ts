@@ -26,76 +26,83 @@ import { wrapFetchWithPayment } from "@x402/fetch";
 import { X402_PAID_API_URL } from "@/config/x402";
 
 export async function payForApi() {
-  // CdpX402Client lazily provisions its wallet on first payment and handles
-  // 402 responses automatically. Calling `getAddresses()` eagerly provisions
-  // it now, so we know which address to fund before paying.
-  // "development" registers Base Sepolia, since this example pays there.
-  const client = new CdpX402Client({ environment: "production" });
-  const { evmAddress, svmAddress } = await client.getAddresses();
+  try {
+    // CdpX402Client lazily provisions its wallet on first payment and handles
+    // 402 responses automatically. Calling `getAddresses()` eagerly provisions
+    // it now, so we know which address to fund before paying.
+    // "development" registers Base Sepolia, since this example pays there.
+    const client = new CdpX402Client({ environment: "production" });
+    console.log({});
 
-  console.log("X402 TOP AGENT client ready");
-  console.log("  EVM address:", evmAddress);
-  console.log("  Solana address:", svmAddress);
-  console.log(
-    "  Fund the EVM address with USDC on Base Sepolia before making payments:",
-  );
-  console.log(
-    '    CDP Faucet: https://portal.cdp.coinbase.com -> "Onchain Tools" -> "Faucet"\n',
-  );
+    const { evmAddress, svmAddress } = await client.getAddresses();
 
-  // Optional: top up the wallet straight from the CDP faucet. The same CDP
-  // credentials power both the faucet and the x402 facilitator.
-  if (process.env.X402_FUND_FROM_FAUCET === "true") {
-    console.log("Requesting USDC from the CDP faucet...");
-    try {
-      const cdpClient = new CdpClient({});
-      const { transactionHash } = await cdpClient.evm.requestFaucet({
-        address: evmAddress,
-        network: "base-sepolia",
-        token: "usdc",
-      });
-      console.log(`  Faucet tx: ${transactionHash}`);
-      console.log(
-        "  Wait for it to confirm, then re-run without the flag to pay.\n",
-      );
-      return;
-    } catch {
-      // The wallet may already be funded, or the project faucet limit was hit.
-      console.warn(
-        "  Faucet request failed — you may already be funded, or hit the project limit.",
-      );
-      console.warn(
-        '  Fund manually if needed: https://portal.cdp.coinbase.com -> "Onchain Tools" -> "Faucet"\n',
-      );
-      // Fall through and attempt the payment anyway.
-    }
-  }
-
-  const fetchWithPayment = wrapFetchWithPayment(globalThis.fetch, client);
-
-  console.log(`Requesting: ${X402_PAID_API_URL}`);
-  const response = await fetchWithPayment(X402_PAID_API_URL);
-
-  if (!response.ok) {
-    throw new Error(
-      `Request failed: ${response.status} ${response.statusText}`,
-    );
-  }
-
-  console.log(`Agent gateway payment succeeded — HTTP ${response.status}`);
-
-  // The protected resource decides its own content type, so parse defensively
-  // rather than assuming JSON (the x402.org demo endpoint returns HTML).
-  const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
-    console.log("Response:", JSON.stringify(await response.json(), null, 2));
-  } else {
-    const text = await response.text();
+    console.log("X402 TOP AGENT client ready");
+    console.log("  EVM address:", evmAddress);
+    console.log("  Solana address:", svmAddress);
     console.log(
-      "Response:",
-      text.length > 500
-        ? `${text.slice(0, 500)}… (${text.length} bytes)`
-        : text,
+      "  Fund the EVM address with USDC on Base Sepolia before making payments:",
     );
+    console.log(
+      '    CDP Faucet: https://portal.cdp.coinbase.com -> "Onchain Tools" -> "Faucet"\n',
+    );
+
+    // Optional: top up the wallet straight from the CDP faucet. The same CDP
+    // credentials power both the faucet and the x402 facilitator.
+    if (process.env.X402_FUND_FROM_FAUCET === "true") {
+      console.log("Requesting USDC from the CDP faucet...");
+      try {
+        const cdpClient = new CdpClient({});
+        const { transactionHash } = await cdpClient.evm.requestFaucet({
+          address: evmAddress,
+          network: "base-sepolia",
+          token: "usdc",
+        });
+        console.log(`  Faucet tx: ${transactionHash}`);
+        console.log(
+          "  Wait for it to confirm, then re-run without the flag to pay.\n",
+        );
+        return;
+      } catch {
+        // The wallet may already be funded, or the project faucet limit was hit.
+        console.warn(
+          "  Faucet request failed — you may already be funded, or hit the project limit.",
+        );
+        console.warn(
+          '  Fund manually if needed: https://portal.cdp.coinbase.com -> "Onchain Tools" -> "Faucet"\n',
+        );
+        // Fall through and attempt the payment anyway.
+      }
+    }
+
+    const fetchWithPayment = wrapFetchWithPayment(globalThis.fetch, client);
+
+    console.log(`Requesting: ${X402_PAID_API_URL}`);
+    const response = await fetchWithPayment(X402_PAID_API_URL);
+    console.log({ response });
+
+    if (!response.ok) {
+      throw new Error(
+        `Request failed: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    console.log(`Agent gateway payment succeeded — HTTP ${response.status}`);
+
+    // The protected resource decides its own content type, so parse defensively
+    // rather than assuming JSON (the x402.org demo endpoint returns HTML).
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      console.log("Response:", JSON.stringify(await response.json(), null, 2));
+    } else {
+      const text = await response.text();
+      console.log(
+        "Response:",
+        text.length > 500
+          ? `${text.slice(0, 500)}… (${text.length} bytes)`
+          : text,
+      );
+    }
+  } catch (error) {
+    console.log({ error });
   }
 }
