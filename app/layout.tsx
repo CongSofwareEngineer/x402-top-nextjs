@@ -1,0 +1,31 @@
+import { DOMAIN } from "@/config/x402";
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+
+// Social crawlers need absolute image URLs. Prefer an explicit site URL, then
+// the deployment URL Vercel injects, and fall back to localhost for dev.
+ 
+
+export const metadata: Metadata = {
+  metadataBase: new URL(DOMAIN),
+  title: "CHAIN VAULT API",
+  description: "Blockchain Gateway Service",
+  openGraph: {
+    title: "CHAIN VAULT API",
+    description: "Blockchain Gateway Service",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CHAIN VAULT API",
+    description: "Blockchain Gateway Service",
+  },
+};
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
