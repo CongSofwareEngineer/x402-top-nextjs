@@ -2,27 +2,9 @@ import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 
 export function bazaarDeclaration() {
   return declareDiscoveryExtension({
-    input: {},
-    inputSchema: {
-      type: "object",
-      properties: {},
-      required: [],
-      additionalProperties: false,
-    },
+    method: "GET",
     output: {
       example: { status: "ok" },
-      schema: {
-        type: "object",
-        properties: {
-          status: {
-            type: "string",
-            enum: ["ok"],
-            description: "confirmed once the top agent gateway fee has been cleared",
-          },
-        },
-        required: ["status"],
-        additionalProperties: false,
-      },
     },
-  });
+  } as Parameters<typeof declareDiscoveryExtension>[0]);
 }
