@@ -17,4 +17,4 @@ const handler = async () => {
 };
 // withX402 gates this route with x402. The CDP facilitator (wired in ../../x402)
 // verifies and settles the payment — no other change from a self-hosted setup.
-export const GET = buildApi(handler, "agent-insight");
+export const GET = buildApi(handler, "report");

@@ -7,11 +7,11 @@ export const DOMAIN = process.env.NEXT_PUBLIC_SITE_URL as string;
 export const X402_PAID_API_URL = `${DOMAIN}/api/report`;
 
 export const PRICES_USD = {
-  "agent-insight": "0.01",
-  "dispatch-asset": "0.01",
+  "report": "0.01",
+  "send-token": "0.01",
 } as const;
 
 export const DESCRIPTIONS = {
-  "agent-insight": "premium agent insight analysis",
-  "dispatch-asset": "asset dispatch for autonomous agents",
+  "report": "premium agent insight analysis",
+  "send-token": "asset dispatch for autonomous agents",
 } as const satisfies Record<keyof typeof PRICES_USD, string>;

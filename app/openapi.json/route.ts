@@ -10,18 +10,18 @@ export const PAY_LABEL = "X402 Top Agent Gateway Fee";
 // need not be "dispatch-*" — the family name is not baked into the discovery shape.
 const PAID_ROUTES = [
   {
-    path: "/api/agent-insight",
-    operationId: "agentInsight",
-    summary: "Agent Insight — cover the premium analysis gateway fee",
-    description: "Cover the gateway fee for a premium agent insight analysis.",
-    price: PRICES_USD["agent-insight"],
+    path: "/api/report",
+    operationId: "report",
+    summary: "Report — cover the premium analysis gateway fee",
+    description: "Cover the gateway fee for a premium report analysis.",
+    price: PRICES_USD["report"],
   },
   {
-    path: "/api/dispatch-asset",
-    operationId: "dispatchAsset",
-    summary: "Dispatch Asset — cover the autonomous agent dispatch fee",
-    description: "Cover the gateway fee for an autonomous asset dispatch operation.",
-    price: PRICES_USD["dispatch-asset"],
+    path: "/api/send-token",
+    operationId: "sendToken",
+    summary: "Send Token — cover the autonomous agent send token fee",
+    description: "Cover the gateway fee for an autonomous send token operation.",
+    price: PRICES_USD["send-token"],
   },
 ] as const;
 
