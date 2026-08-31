@@ -19,6 +19,13 @@ export const wagmiAdapter = new WagmiAdapter({
   ssr: true,
   projectId,
   networks,
+  syncConnectedChain: true,
+  batch: {
+    multicall: {
+      batchSize: 1024,
+      wait: 100, // ms
+    },
+  },
 });
 
 export const config = wagmiAdapter.wagmiConfig;

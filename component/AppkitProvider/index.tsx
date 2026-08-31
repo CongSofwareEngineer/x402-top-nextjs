@@ -32,6 +32,7 @@ const modal = createAppKit({
   features: {
     analytics: true, // Optional - defaults to your Cloud configuration
   },
+  enableReconnect: true,
 });
 
 function AppkitProvider({

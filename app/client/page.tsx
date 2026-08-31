@@ -1,7 +1,12 @@
 "use client";
 import { useCallback, useState } from "react";
 import { AppKitButton } from "@reown/appkit/react";
-import { useAccount, useSignTypedData, useChainId, useSwitchChain } from "wagmi";
+import {
+  useAccount,
+  useSignTypedData,
+  useChainId,
+  useSwitchChain,
+} from "wagmi";
 import { DOMAIN, NETWORK } from "@/config/x402";
 
 const TRANSFER_WITH_AUTHORIZATION_TYPES = {
@@ -17,7 +22,9 @@ const TRANSFER_WITH_AUTHORIZATION_TYPES = {
 
 function safeBase64Encode(data: string): string {
   const bytes = new TextEncoder().encode(data);
-  const binaryString = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
+  const binaryString = Array.from(bytes, (byte) =>
+    String.fromCharCode(byte),
+  ).join("");
   return btoa(binaryString);
 }
 
@@ -32,7 +39,10 @@ function safeBase64Decode(data: string): string {
 
 function generateNonce(): `0x${string}` {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
-  return ("0x" + Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("")) as `0x${string}`;
+  return ("0x" +
+    Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")) as `0x${string}`;
 }
 
 type PaymentRequired = {
@@ -117,7 +127,9 @@ function ApiCard({
     <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 shadow-lg">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-zinc-100">/{endpoint.path}</h3>
+          <h3 className="text-lg font-semibold text-zinc-100">
+            /{endpoint.path}
+          </h3>
           <p className="text-sm text-zinc-400">{endpoint.description}</p>
         </div>
         <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400 border border-emerald-500/20">
@@ -126,15 +138,20 @@ function ApiCard({
       </div>
 
       <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950/60 p-4">
-        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">API Docs</p>
+        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">
+          API Docs
+        </p>
         <code className="block text-sm text-zinc-300">
-          <span className="text-emerald-400">GET</span> {DOMAIN}/api/{endpoint.path}
+          <span className="text-emerald-400">GET</span> {DOMAIN}/api/
+          {endpoint.path}
         </code>
         <p className="mt-2 text-xs text-zinc-500">
-          Headers trả về khi 402: <code className="text-zinc-400">Payment-Required</code> (base64 JSON)
+          Headers trả về khi 402:{" "}
+          <code className="text-zinc-400">Payment-Required</code> (base64 JSON)
         </p>
         <p className="mt-1 text-xs text-zinc-500">
-          Gửi kèm chữ ký: <code className="text-zinc-400">PAYMENT-SIGNATURE</code> (base64 JSON)
+          Gửi kèm chữ ký:{" "}
+          <code className="text-zinc-400">PAYMENT-SIGNATURE</code> (base64 JSON)
         </p>
       </div>
 
@@ -149,10 +166,10 @@ function ApiCard({
                 step.status === "success"
                   ? "bg-emerald-400"
                   : step.status === "error"
-                  ? "bg-red-400"
-                  : step.status === "active"
-                  ? "bg-yellow-400 animate-pulse"
-                  : "bg-zinc-700"
+                    ? "bg-red-400"
+                    : step.status === "active"
+                      ? "bg-yellow-400 animate-pulse"
+                      : "bg-zinc-700"
               }`}
             />
             <div className="flex-1">
@@ -185,14 +202,21 @@ const Page = () => {
 
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const { switchChainAsync } = useSwitchChain();
-  const { signTypedDataAsync } = useSignTypedData();
+  const { mutateAsync: switchChainAsync } = useSwitchChain();
+  const { mutateAsync: signTypedDataAsync } = useSignTypedData();
 
-  const updateSteps = useCallback((endpointId: string, steps: Step[] | ((prev: Step[]) => Step[])) => {
-    setEndpointSteps((prev) => ({ ...prev, [endpointId]: typeof steps === "function" ? steps(prev[endpointId] ?? []) : steps }));
-  }, []);
+  const updateSteps = useCallback(
+    (endpointId: string, steps: Step[] | ((prev: Step[]) => Step[])) => {
+      setEndpointSteps((prev) => ({
+        ...prev,
+        [endpointId]:
+          typeof steps === "function" ? steps(prev[endpointId] ?? []) : steps,
+      }));
+    },
+    [],
+  );
 
-  const handleCallApi = useCallback(async (endpointId: "report" | "send-token") => {
+  const handleCallApi = async (endpointId: "report" | "send-token") => {
     const initialSteps: Step[] = [
       { label: "Bước 1: Gọi API", status: "active" },
       { label: "Bước 2: Parse Payment-Required", status: "pending" },
@@ -214,41 +238,86 @@ const Page = () => {
         await switchChainAsync({ chainId: targetChainId });
       }
 
-      const res = await fetch(`${DOMAIN}/api/${endpointId}`);
+        const res = await fetch(`/api/${endpointId}`);
+      console.log({ res });
 
       if (res.status !== 402) {
         const data = await res.json();
         updateSteps(endpointId, [
-          { label: "Bước 1: Gọi API", status: "success", detail: "HTTP 200 - Không cần thanh toán" },
-          { label: "Bước 2: Parse Payment-Required", status: "success", detail: "Không có 402" },
-          { label: "Bước 3: Ký chữ ký (wagmi)", status: "success", detail: "Bỏ qua" },
-          { label: "Bước 4: Gửi X-PAYMENT header", status: "success", detail: "Bỏ qua" },
-          { label: "Bước 5: Nhận kết quả", status: "success", detail: JSON.stringify(data) },
+          {
+            label: "Bước 1: Gọi API",
+            status: "success",
+            detail: "HTTP 200 - Không cần thanh toán",
+          },
+          {
+            label: "Bước 2: Parse Payment-Required",
+            status: "success",
+            detail: "Không có 402",
+          },
+          {
+            label: "Bước 3: Ký chữ ký (wagmi)",
+            status: "success",
+            detail: "Bỏ qua",
+          },
+          {
+            label: "Bước 4: Gửi X-PAYMENT header",
+            status: "success",
+            detail: "Bỏ qua",
+          },
+          {
+            label: "Bước 5: Nhận kết quả",
+            status: "success",
+            detail: JSON.stringify(data),
+          },
         ]);
         setLoading(false);
         return;
       }
 
       const payEncode = res.headers.get("Payment-Required");
+      console.log({ payEncode });
+
       if (!payEncode) {
         throw new Error("Thiếu header Payment-Required");
       }
 
       updateSteps(endpointId, [
-        { label: "Bước 1: Gọi API", status: "success", detail: `HTTP ${res.status} - 402 Payment Required` },
-        { label: "Bước 2: Parse Payment-Required", status: "active", detail: "Đang decode base64..." },
+        {
+          label: "Bước 1: Gọi API",
+          status: "success",
+          detail: `HTTP ${res.status} - 402 Payment Required`,
+        },
+        {
+          label: "Bước 2: Parse Payment-Required",
+          status: "active",
+          detail: "Đang decode base64...",
+        },
         { label: "Bước 3: Ký chữ ký (wagmi)", status: "pending" },
         { label: "Bước 4: Gửi X-PAYMENT header", status: "pending" },
         { label: "Bước 5: Nhận kết quả", status: "pending" },
       ]);
 
-      const paymentRequired: PaymentRequired = JSON.parse(safeBase64Decode(payEncode));
+      const paymentRequired: PaymentRequired = JSON.parse(
+        safeBase64Decode(payEncode),
+      );
       const requirement = paymentRequired.accepts[0];
 
       updateSteps(endpointId, [
-        { label: "Bước 1: Gọi API", status: "success", detail: `HTTP ${res.status} - 402 Payment Required` },
-        { label: "Bước 2: Parse Payment-Required", status: "success", detail: `Scheme: ${requirement.scheme}, Network: ${requirement.network}` },
-        { label: "Bước 3: Ký chữ ký (wagmi)", status: "active", detail: "Đang mở ví để ký..." },
+        {
+          label: "Bước 1: Gọi API",
+          status: "success",
+          detail: `HTTP ${res.status} - 402 Payment Required`,
+        },
+        {
+          label: "Bước 2: Parse Payment-Required",
+          status: "success",
+          detail: `Scheme: ${requirement.scheme}, Network: ${requirement.network}`,
+        },
+        {
+          label: "Bước 3: Ký chữ ký (wagmi)",
+          status: "active",
+          detail: "Đang mở ví để ký...",
+        },
         { label: "Bước 4: Gửi X-PAYMENT header", status: "pending" },
         { label: "Bước 5: Nhận kết quả", status: "pending" },
       ]);
@@ -257,7 +326,9 @@ const Page = () => {
       const authorization = {
         from: address,
         to: requirement.payTo,
-        value: (requirement as PaymentRequirement & { amount?: string }).amount ?? requirement.maxAmountRequired,
+        value:
+          (requirement as PaymentRequirement & { amount?: string }).amount ??
+          requirement.maxAmountRequired,
         validAfter: "0",
         validBefore: (now + requirement.maxTimeoutSeconds).toString(),
         nonce: generateNonce(),
@@ -284,10 +355,26 @@ const Page = () => {
       });
 
       updateSteps(endpointId, [
-        { label: "Bước 1: Gọi API", status: "success", detail: `HTTP ${res.status} - 402 Payment Required` },
-        { label: "Bước 2: Parse Payment-Required", status: "success", detail: `Scheme: ${requirement.scheme}, Network: ${requirement.network}` },
-        { label: "Bước 3: Ký chữ ký (wagmi)", status: "success", detail: "Đã ký EIP-3009 TransferWithAuthorization" },
-        { label: "Bước 4: Gửi X-PAYMENT header", status: "active", detail: "Đang gửi chữ ký..." },
+        {
+          label: "Bước 1: Gọi API",
+          status: "success",
+          detail: `HTTP ${res.status} - 402 Payment Required`,
+        },
+        {
+          label: "Bước 2: Parse Payment-Required",
+          status: "success",
+          detail: `Scheme: ${requirement.scheme}, Network: ${requirement.network}`,
+        },
+        {
+          label: "Bước 3: Ký chữ ký (wagmi)",
+          status: "success",
+          detail: "Đã ký EIP-3009 TransferWithAuthorization",
+        },
+        {
+          label: "Bước 4: Gửi X-PAYMENT header",
+          status: "active",
+          detail: "Đang gửi chữ ký...",
+        },
         { label: "Bước 5: Nhận kết quả", status: "pending" },
       ]);
 
@@ -304,7 +391,7 @@ const Page = () => {
 
       const paymentHeader = safeBase64Encode(JSON.stringify(paymentPayload));
 
-      const paidRes = await fetch(`${DOMAIN}/api/${endpointId}`, {
+        const paidRes = await fetch(`/api/${endpointId}`, {
         headers: {
           "PAYMENT-SIGNATURE": paymentHeader,
         },
@@ -317,34 +404,65 @@ const Page = () => {
 
       const data = await paidRes.json();
       updateSteps(endpointId, [
-        { label: "Bước 1: Gọi API", status: "success", detail: `HTTP ${res.status} - 402 Payment Required` },
-        { label: "Bước 2: Parse Payment-Required", status: "success", detail: `Scheme: ${requirement.scheme}, Network: ${requirement.network}` },
-        { label: "Bước 3: Ký chữ ký (wagmi)", status: "success", detail: "Đã ký EIP-3009 TransferWithAuthorization" },
-        { label: "Bước 4: Gửi X-PAYMENT header", status: "success", detail: `HTTP ${paidRes.status} - Thanh toán thành công` },
-        { label: "Bước 5: Nhận kết quả", status: "success", detail: JSON.stringify(data) },
+        {
+          label: "Bước 1: Gọi API",
+          status: "success",
+          detail: `HTTP ${res.status} - 402 Payment Required`,
+        },
+        {
+          label: "Bước 2: Parse Payment-Required",
+          status: "success",
+          detail: `Scheme: ${requirement.scheme}, Network: ${requirement.network}`,
+        },
+        {
+          label: "Bước 3: Ký chữ ký (wagmi)",
+          status: "success",
+          detail: "Đã ký EIP-3009 TransferWithAuthorization",
+        },
+        {
+          label: "Bước 4: Gửi X-PAYMENT header",
+          status: "success",
+          detail: `HTTP ${paidRes.status} - Thanh toán thành công`,
+        },
+        {
+          label: "Bước 5: Nhận kết quả",
+          status: "success",
+          detail: JSON.stringify(data),
+        },
       ]);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định";
+      console.log({ err });
+
+      const errorMessage =
+        err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định";
       updateSteps(endpointId, (prev: Step[]) => {
         const failed = [...prev];
         const activeIndex = failed.findIndex((s) => s.status === "active");
         if (activeIndex >= 0) {
-          failed[activeIndex] = { ...failed[activeIndex], status: "error", detail: errorMessage };
+          failed[activeIndex] = {
+            ...failed[activeIndex],
+            status: "error",
+            detail: errorMessage,
+          };
         }
         return failed;
       });
     } finally {
       setLoading(false);
     }
-  }, [updateSteps, isConnected, address, chainId, switchChainAsync, signTypedDataAsync]);
+  };
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-100">x402 Payment Demo</h1>
-            <p className="text-sm text-zinc-400 mt-1">Thanh toán API sử dụng giao thức x402 với ví Web3</p>
+            <h1 className="text-2xl font-bold text-zinc-100">
+              x402 Payment Demo
+            </h1>
+            <p className="text-sm text-zinc-400 mt-1">
+              Thanh toán API sử dụng giao thức x402 với ví Web3
+            </p>
           </div>
           <AppKitButton />
         </div>
@@ -362,20 +480,47 @@ const Page = () => {
         </div>
 
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 shadow-lg">
-          <h3 className="text-lg font-semibold text-zinc-100 mb-4">Tổng quan x402 Flow</h3>
+          <h3 className="text-lg font-semibold text-zinc-100 mb-4">
+            Tổng quan x402 Flow
+          </h3>
           <div className="grid gap-4 md:grid-cols-5">
             {[
-              { num: "1", title: "GET", desc: "Gọi API không có header thanh toán" },
-              { num: "2", title: "402", desc: "Server trả về Payment-Required (base64)" },
-              { num: "3", title: "SIGN", desc: "Client ký EIP-3009 bằng wagmi" },
-              { num: "4", title: "X-PAYMENT", desc: "Gửi chữ ký trong header PAYMENT-SIGNATURE" },
-              { num: "5", title: "200", desc: "Facilitator settle → API trả dữ liệu" },
+              {
+                num: "1",
+                title: "GET",
+                desc: "Gọi API không có header thanh toán",
+              },
+              {
+                num: "2",
+                title: "402",
+                desc: "Server trả về Payment-Required (base64)",
+              },
+              {
+                num: "3",
+                title: "SIGN",
+                desc: "Client ký EIP-3009 bằng wagmi",
+              },
+              {
+                num: "4",
+                title: "X-PAYMENT",
+                desc: "Gửi chữ ký trong header PAYMENT-SIGNATURE",
+              },
+              {
+                num: "5",
+                title: "200",
+                desc: "Facilitator settle → API trả dữ liệu",
+              },
             ].map((item) => (
-              <div key={item.num} className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 text-center">
+              <div
+                key={item.num}
+                className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 text-center"
+              >
                 <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 text-sm font-bold text-emerald-400 border border-emerald-500/20">
                   {item.num}
                 </div>
-                <p className="text-sm font-semibold text-zinc-200">{item.title}</p>
+                <p className="text-sm font-semibold text-zinc-200">
+                  {item.title}
+                </p>
                 <p className="text-xs text-zinc-500 mt-1">{item.desc}</p>
               </div>
             ))}
