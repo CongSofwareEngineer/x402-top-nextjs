@@ -7,8 +7,8 @@ export const DOMAIN = process.env.NEXT_PUBLIC_SITE_URL as string;
 export const X402_PAID_API_URL = `${DOMAIN}/api/report`;
 
 export const PRICES_USD = {
-  report: "0.01",
-  "send-token": "0.01",
+  report: "0.001",
+  "send-token": "0.001",
 } as const;
 
 export const DESCRIPTIONS = {
