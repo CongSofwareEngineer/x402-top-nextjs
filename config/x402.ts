@@ -1,7 +1,7 @@
 import { Address } from "viem";
 
 export const NETWORK = "eip155:8453"; // Base
-export const PAY_TO = process.env.PAY_TO as Address;
+export const PAY_TO = "0xbeab7b87280b63bf90c3e8fa04d7285e3895cd07" as Address;
 export const DOMAIN = process.env.NEXT_PUBLIC_SITE_URL as string;
 
 export const X402_PAID_API_URL = `${DOMAIN}/api/report`;
