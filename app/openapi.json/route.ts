@@ -1,27 +1,27 @@
 import { PRICES_USD } from "@/config/x402";
 import { NextRequest, NextResponse } from "next/server";
 
-export const PAY_LABEL = "X402 Protocol Gateway Fee";
+export const PAY_LABEL = "X402 Top Agent Gateway Fee";
 
 // The paid routes. Each is one paywall over a wallet action, so they share a
 // shape and differ only in path, price, and wording. Add a new paid endpoint by
 // appending an entry here (and its price key in lib/x402's PRICES_USD); the
 // OpenAPI doc and the discovery guidance pick it up with no other change. Routes
-// need not be "send-*" — the family name is not baked into the discovery shape.
+// need not be "dispatch-*" — the family name is not baked into the discovery shape.
 const PAID_ROUTES = [
   {
-    path: "/api/report",
-    operationId: "report",
-    summary: "Report — cover the AI-generated report fee",
-    description: "Cover the fee for an AI-generated report.",
-    price: PRICES_USD["report"],
+    path: "/api/agent-insight",
+    operationId: "agentInsight",
+    summary: "Agent Insight — cover the premium analysis gateway fee",
+    description: "Cover the gateway fee for a premium agent insight analysis.",
+    price: PRICES_USD["agent-insight"],
   },
   {
-    path: "/api/send-token",
-    operationId: "sendToken",
-    summary: "Send Token — cover the ERC-20 dispatch gateway fee",
-    description: "Cover the gateway fee for an ERC-20 token dispatch.",
-    price: PRICES_USD["send-token"],
+    path: "/api/dispatch-asset",
+    operationId: "dispatchAsset",
+    summary: "Dispatch Asset — cover the autonomous agent dispatch fee",
+    description: "Cover the gateway fee for an autonomous asset dispatch operation.",
+    price: PRICES_USD["dispatch-asset"],
   },
 ] as const;
 
@@ -100,10 +100,10 @@ export async function GET(req: NextRequest) {
   const doc = {
     openapi: "3.1.0",
     info: {
-      title: "CHAIN VAULT Gateway Server",
+      title: "X402 TOP AGENT Gateway Server",
       version: "1.0.0",
       description:
-        "Agent-native blockchain-action paywall. Pay-per-call with USDC on Ethereum L2 " +
+        "Agent-native pay-per-call gateway for autonomous blockchain actions. Pay with USDC on Ethereum L2 " +
         "through the x402 protocol. No accounts or API keys required.",
       // High-level guidance x402scan surfaces to agents browsing the API.
       // Phrased about the paywall in general, not any one route family, so it
@@ -114,10 +114,10 @@ export async function GET(req: NextRequest) {
         "Ethereum L2): settle the 402 challenge and the call completes. The routes take " +
         "no transfer details and never touch the chain — the caller broadcasts the " +
         "action itself. See each operation for its price and behavior.",
-      contact: { email: "ops@chainvault.example" },
+      contact: { email: "ops@x402topagent.example" },
       "x-logo": {
         url: `${origin}/favicon.ico`,
-        altText: "CHAIN VAULT Gateway Server",
+        altText: "X402 TOP AGENT Gateway Server",
       },
     },
     servers: [{ url: origin }],

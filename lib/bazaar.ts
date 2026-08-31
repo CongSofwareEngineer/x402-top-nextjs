@@ -17,7 +17,7 @@ export function bazaarDeclaration() {
           status: {
             type: "string",
             enum: ["ok"],
-            description: "confirmed once the gateway fee has been cleared",
+            description: "confirmed once the top agent gateway fee has been cleared",
           },
         },
         required: ["status"],

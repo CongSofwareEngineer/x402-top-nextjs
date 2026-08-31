@@ -26,7 +26,7 @@ import { CdpX402Client } from "@coinbase/cdp-sdk/x402";
 import { wrapFetchWithPayment } from "@x402/fetch";
 import { X402_PAID_API_URL } from "@/config/x402";
 
-async function main() {
+export async function payForApi() {
   // CdpX402Client lazily provisions its wallet on first payment and handles
   // 402 responses automatically. Calling `getAddresses()` eagerly provisions
   // it now, so we know which address to fund before paying.
@@ -100,8 +100,3 @@ async function main() {
     );
   }
 }
-
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});

@@ -8,17 +8,17 @@ import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   metadataBase: new URL(DOMAIN),
-  title: "CHAIN VAULT API",
-  description: "Blockchain Gateway Service",
+  title: "X402 TOP AGENT",
+  description: "Agent-Native Blockchain Gateway",
   openGraph: {
-    title: "CHAIN VAULT API",
-    description: "Blockchain Gateway Service",
+    title: "X402 TOP AGENT",
+    description: "Agent-Native Blockchain Gateway",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "CHAIN VAULT API",
-    description: "Blockchain Gateway Service",
+    title: "X402 TOP AGENT",
+    description: "Agent-Native Blockchain Gateway",
   },
 };
 

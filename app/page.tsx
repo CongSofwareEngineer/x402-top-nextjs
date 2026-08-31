@@ -8,7 +8,7 @@ export default function Home() {
       <meta httpEquiv="refresh" content={`0; url=${DESTINATION}`} />
       <main>
         <p>
-          Redirecting to <a href={DESTINATION}>chainvault.example</a>…
+          Redirecting to <a href={DESTINATION}>x402topagent.example</a>…
         </p>
       </main>
     </>
