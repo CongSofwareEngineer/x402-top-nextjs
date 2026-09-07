@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
             value:
               "Content-Type, Payment-Signature, payment-signature, PAYMENT-SIGNATURE, Payment-Required, payment-required, Authorization",
           },
-          // Cho phép Client JavaScript đọc được header trả về từ Server
+          // Allow Client JavaScript to read headers returned from Server
           {
             key: "Access-Control-Expose-Headers",
             value: "Payment-Required, payment-required, PAYMENT-REQUIRED",

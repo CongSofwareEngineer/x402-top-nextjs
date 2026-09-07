@@ -62,35 +62,35 @@ async function payForEndpoint(): Promise<Step[]> {
   const steps: Step[] = [];
 
   try {
-    // Bước 1: Gọi API không có header thanh toán
-    steps.push({ label: "Bước 1: Gọi API", status: "active" });
+    // Step 1: Call API without payment header
+    steps.push({ label: "Step 1: Call API", status: "active" });
     const res = await fetch(url);
 
     if (res.status !== 402) {
       const data = await res.json();
       steps.push(
         {
-          label: "Bước 1: Gọi API",
+          label: "Step 1: Call API",
           status: "success",
-          detail: "HTTP 200 - Không cần thanh toán",
+          detail: "HTTP 200 - No payment required",
         },
         {
-          label: "Bước 2: Parse Payment-Required",
+          label: "Step 2: Parse Payment-Required",
           status: "success",
-          detail: "Không có 402",
+          detail: "No 402",
         },
         {
-          label: "Bước 3: Ký chữ ký (Web3Service)",
+          label: "Step 3: Sign signature (Web3Service)",
           status: "success",
-          detail: "Bỏ qua",
+          detail: "Skipped",
         },
         {
-          label: "Bước 4: Gửi PAYMENT-SIGNATURE header",
+          label: "Step 4: Send PAYMENT-SIGNATURE header",
           status: "success",
-          detail: "Bỏ qua",
+          detail: "Skipped",
         },
         {
-          label: "Bước 5: Nhận kết quả",
+          label: "Step 5: Receive result",
           status: "success",
           detail: JSON.stringify(data),
         },
@@ -98,21 +98,21 @@ async function payForEndpoint(): Promise<Step[]> {
       return steps;
     }
 
-    // Bước 2: Parse Payment-Required (base64)
+    // Step 2: Parse Payment-Required (base64)
     const payEncode = res.headers.get("Payment-Required");
     if (!payEncode) {
-      throw new Error("Thiếu header Payment-Required");
+      throw new Error("Missing Payment-Required header");
     }
 
     steps.push({
-      label: "Bước 1: Gọi API",
+      label: "Step 1: Call API",
       status: "success",
       detail: `HTTP ${res.status} - 402 Payment Required`,
     });
     steps.push({
-      label: "Bước 2: Parse Payment-Required",
+      label: "Step 2: Parse Payment-Required",
       status: "active",
-      detail: "Đang decode base64...",
+      detail: "Decoding base64...",
     });
 
     const paymentRequired: PaymentRequired = JSON.parse(
@@ -123,17 +123,17 @@ async function payForEndpoint(): Promise<Step[]> {
     const resolvedChainId = parseInt(requirement.network.split(":")[1]);
 
     steps[steps.length - 1] = {
-      label: "Bước 2: Parse Payment-Required",
+      label: "Step 2: Parse Payment-Required",
       status: "success",
       detail: `Scheme: ${requirement.scheme}, Network: ${requirement.network}`,
     };
 
-    // Bước 3: Ký EIP-3009 TransferWithAuthorization bằng private key (Web3Service)
+    // Step 3: Sign EIP-3009 TransferWithAuthorization with private key (Web3Service)
     const now = Math.floor(Date.now() / 1000);
     steps.push({
-      label: "Bước 3: Ký chữ ký (Web3Service)",
+      label: "Step 3: Sign signature (Web3Service)",
       status: "active",
-      detail: "Đang decode PRIVATE_KEY_ENCODE và ký...",
+      detail: "Decoding PRIVATE_KEY_ENCODE and signing...",
     });
 
     const { from, nonce, signature } =
@@ -151,13 +151,13 @@ async function payForEndpoint(): Promise<Step[]> {
       });
 
     steps[steps.length - 1] = {
-      label: "Bước 3: Ký chữ ký (Web3Service)",
+      label: "Step 3: Sign signature (Web3Service)",
       status: "success",
-      detail: `Đã ký EIP-3009 bởi ${from}`,
+      detail: `Signed EIP-3009 by ${from}`,
     };
 
     steps.push({
-      label: "Bước 4: Gửi PAYMENT-SIGNATURE header",
+      label: "Step 4: Send PAYMENT-SIGNATURE header",
       status: "active",
     });
 
@@ -191,13 +191,13 @@ async function payForEndpoint(): Promise<Step[]> {
       const errorText = await paidRes.text();
       console.log({ errorText, paidRes });
 
-      throw new Error(`Thanh toán thất bại: ${paidRes.status} ${errorText}`);
+      throw new Error(`Payment failed: ${paidRes.status} ${errorText}`);
     }
 
     steps[steps.length - 1] = {
-      label: "Bước 4: Gửi PAYMENT-SIGNATURE header",
+      label: "Step 4: Send PAYMENT-SIGNATURE header",
       status: "success",
-      detail: `HTTP ${paidRes.status} - Thanh toán thành công`,
+      detail: `HTTP ${paidRes.status} - Payment successful`,
     };
 
     const header: Record<string, string> = {};
@@ -207,7 +207,7 @@ async function payForEndpoint(): Promise<Step[]> {
 
     const data = await paidRes.json();
     steps.push({
-      label: "Bước 5: Nhận kết quả",
+      label: "Step 5: Receive result",
       status: "success",
       detail: JSON.stringify(data),
       header,
@@ -215,7 +215,7 @@ async function payForEndpoint(): Promise<Step[]> {
 
     return steps;
   } catch (err: any) {
-    steps.push({ label: "Lỗi", status: "error", detail: JSON.stringify(err) });
+    steps.push({ label: "Error", status: "error", detail: JSON.stringify(err) });
     return steps;
   }
 }

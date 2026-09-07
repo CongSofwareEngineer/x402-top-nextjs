@@ -146,11 +146,11 @@ function ApiCard({
           {endpoint.path}
         </code>
         <p className="mt-2 text-xs text-zinc-500">
-          Headers trả về khi 402:{" "}
+          Headers returned on 402:{" "}
           <code className="text-zinc-400">Payment-Required</code> (base64 JSON)
         </p>
         <p className="mt-1 text-xs text-zinc-500">
-          Gửi kèm chữ ký:{" "}
+          Send along with signature:{" "}
           <code className="text-zinc-400">PAYMENT-SIGNATURE</code> (base64 JSON)
         </p>
       </div>
@@ -187,7 +187,7 @@ function ApiCard({
         disabled={loading}
         className="mt-4 w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {loading ? "Đang xử lý..." : `Gọi /${endpoint.path}`}
+        {loading ? "Processing..." : `Call /${endpoint.path}`}
       </button>
     </div>
   );
@@ -218,11 +218,11 @@ const Page = () => {
 
   const handleCallApi = async (endpointId: "report" | "send-token") => {
     const initialSteps: Step[] = [
-      { label: "Bước 1: Gọi API", status: "active" },
-      { label: "Bước 2: Parse Payment-Required", status: "pending" },
-      { label: "Bước 3: Ký chữ ký (wagmi)", status: "pending" },
-      { label: "Bước 4: Gửi X-PAYMENT header", status: "pending" },
-      { label: "Bước 5: Nhận kết quả", status: "pending" },
+      { label: "Step 1: Call API", status: "active" },
+      { label: "Step 2: Parse Payment-Required", status: "pending" },
+      { label: "Step 3: Sign signature (wagmi)", status: "pending" },
+      { label: "Step 4: Send X-PAYMENT header", status: "pending" },
+      { label: "Step 5: Receive result", status: "pending" },
     ];
 
     updateSteps(endpointId, initialSteps);
@@ -230,7 +230,7 @@ const Page = () => {
 
     try {
       if (!isConnected || !address) {
-        throw new Error("Vui lòng kết nối ví trước");
+        throw new Error("Please connect wallet first");
       }
 
       const targetChainId = parseInt(NETWORK.split(":")[1]);
@@ -245,27 +245,27 @@ const Page = () => {
         const data = await res.json();
         updateSteps(endpointId, [
           {
-            label: "Bước 1: Gọi API",
+            label: "Step 1: Call API",
             status: "success",
-            detail: "HTTP 200 - Không cần thanh toán",
+            detail: "HTTP 200 - No payment required",
           },
           {
-            label: "Bước 2: Parse Payment-Required",
+            label: "Step 2: Parse Payment-Required",
             status: "success",
-            detail: "Không có 402",
+            detail: "No 402",
           },
           {
-            label: "Bước 3: Ký chữ ký (wagmi)",
+            label: "Step 3: Sign signature (wagmi)",
             status: "success",
-            detail: "Bỏ qua",
+            detail: "Skipped",
           },
           {
-            label: "Bước 4: Gửi X-PAYMENT header",
+            label: "Step 4: Send X-PAYMENT header",
             status: "success",
-            detail: "Bỏ qua",
+            detail: "Skipped",
           },
           {
-            label: "Bước 5: Nhận kết quả",
+            label: "Step 5: Receive result",
             status: "success",
             detail: JSON.stringify(data),
           },
@@ -278,23 +278,23 @@ const Page = () => {
       console.log({ payEncode });
 
       if (!payEncode) {
-        throw new Error("Thiếu header Payment-Required");
+        throw new Error("Missing Payment-Required header");
       }
 
       updateSteps(endpointId, [
         {
-          label: "Bước 1: Gọi API",
+          label: "Step 1: Call API",
           status: "success",
           detail: `HTTP ${res.status} - 402 Payment Required`,
         },
         {
-          label: "Bước 2: Parse Payment-Required",
+          label: "Step 2: Parse Payment-Required",
           status: "active",
-          detail: "Đang decode base64...",
+          detail: "Decoding base64...",
         },
-        { label: "Bước 3: Ký chữ ký (wagmi)", status: "pending" },
-        { label: "Bước 4: Gửi X-PAYMENT header", status: "pending" },
-        { label: "Bước 5: Nhận kết quả", status: "pending" },
+        { label: "Step 3: Sign signature (wagmi)", status: "pending" },
+        { label: "Step 4: Send X-PAYMENT header", status: "pending" },
+        { label: "Step 5: Receive result", status: "pending" },
       ]);
 
       const paymentRequired: PaymentRequired = JSON.parse(
@@ -304,22 +304,22 @@ const Page = () => {
 
       updateSteps(endpointId, [
         {
-          label: "Bước 1: Gọi API",
+          label: "Step 1: Call API",
           status: "success",
           detail: `HTTP ${res.status} - 402 Payment Required`,
         },
         {
-          label: "Bước 2: Parse Payment-Required",
+          label: "Step 2: Parse Payment-Required",
           status: "success",
           detail: `Scheme: ${requirement.scheme}, Network: ${requirement.network}`,
         },
         {
-          label: "Bước 3: Ký chữ ký (wagmi)",
+          label: "Step 3: Sign signature (wagmi)",
           status: "active",
-          detail: "Đang mở ví để ký...",
+          detail: "Opening wallet to sign...",
         },
-        { label: "Bước 4: Gửi X-PAYMENT header", status: "pending" },
-        { label: "Bước 5: Nhận kết quả", status: "pending" },
+        { label: "Step 4: Send X-PAYMENT header", status: "pending" },
+        { label: "Step 5: Receive result", status: "pending" },
       ]);
 
       const now = Math.floor(Date.now() / 1000);
@@ -356,26 +356,26 @@ const Page = () => {
 
       updateSteps(endpointId, [
         {
-          label: "Bước 1: Gọi API",
+          label: "Step 1: Call API",
           status: "success",
           detail: `HTTP ${res.status} - 402 Payment Required`,
         },
         {
-          label: "Bước 2: Parse Payment-Required",
+          label: "Step 2: Parse Payment-Required",
           status: "success",
           detail: `Scheme: ${requirement.scheme}, Network: ${requirement.network}`,
         },
         {
-          label: "Bước 3: Ký chữ ký (wagmi)",
+          label: "Step 3: Sign signature (wagmi)",
           status: "success",
-          detail: "Đã ký EIP-3009 TransferWithAuthorization",
+          detail: "Signed EIP-3009 TransferWithAuthorization",
         },
         {
-          label: "Bước 4: Gửi X-PAYMENT header",
+          label: "Step 4: Send X-PAYMENT header",
           status: "active",
-          detail: "Đang gửi chữ ký...",
+          detail: "Sending signature...",
         },
-        { label: "Bước 5: Nhận kết quả", status: "pending" },
+        { label: "Step 5: Receive result", status: "pending" },
       ]);
 
       const paymentPayload: PaymentPayload = {
@@ -399,33 +399,33 @@ const Page = () => {
 
       if (!paidRes.ok) {
         const errorText = await paidRes.text();
-        throw new Error(`Thanh toán thất bại: ${paidRes.status} ${errorText}`);
+        throw new Error(`Payment failed: ${paidRes.status} ${errorText}`);
       }
 
       const data = await paidRes.json();
       updateSteps(endpointId, [
         {
-          label: "Bước 1: Gọi API",
+          label: "Step 1: Call API",
           status: "success",
           detail: `HTTP ${res.status} - 402 Payment Required`,
         },
         {
-          label: "Bước 2: Parse Payment-Required",
+          label: "Step 2: Parse Payment-Required",
           status: "success",
           detail: `Scheme: ${requirement.scheme}, Network: ${requirement.network}`,
         },
         {
-          label: "Bước 3: Ký chữ ký (wagmi)",
+          label: "Step 3: Sign signature (wagmi)",
           status: "success",
-          detail: "Đã ký EIP-3009 TransferWithAuthorization",
+          detail: "Signed EIP-3009 TransferWithAuthorization",
         },
         {
-          label: "Bước 4: Gửi X-PAYMENT header",
+          label: "Step 4: Send X-PAYMENT header",
           status: "success",
-          detail: `HTTP ${paidRes.status} - Thanh toán thành công`,
+          detail: `HTTP ${paidRes.status} - Payment successful`,
         },
         {
-          label: "Bước 5: Nhận kết quả",
+          label: "Step 5: Receive result",
           status: "success",
           detail: JSON.stringify(data),
         },
@@ -434,7 +434,7 @@ const Page = () => {
       console.log({ err });
 
       const errorMessage =
-        err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định";
+        err instanceof Error ? err.message : "An unknown error occurred";
       updateSteps(endpointId, (prev: Step[]) => {
         const failed = [...prev];
         const activeIndex = failed.findIndex((s) => s.status === "active");
@@ -461,7 +461,7 @@ const Page = () => {
               x402 Payment Demo
             </h1>
             <p className="text-sm text-zinc-400 mt-1">
-              Thanh toán API sử dụng giao thức x402 với ví Web3
+              Pay for APIs using x402 protocol with Web3 wallet
             </p>
           </div>
           <AppKitButton />
@@ -481,34 +481,34 @@ const Page = () => {
 
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 shadow-lg">
           <h3 className="text-lg font-semibold text-zinc-100 mb-4">
-            Tổng quan x402 Flow
+            x402 Flow Overview
           </h3>
           <div className="grid gap-4 md:grid-cols-5">
             {[
               {
                 num: "1",
                 title: "GET",
-                desc: "Gọi API không có header thanh toán",
+                desc: "Call API without payment header",
               },
               {
                 num: "2",
                 title: "402",
-                desc: "Server trả về Payment-Required (base64)",
+                desc: "Server returns Payment-Required (base64)",
               },
               {
                 num: "3",
                 title: "SIGN",
-                desc: "Client ký EIP-3009 bằng wagmi",
+                desc: "Client signs EIP-3009 with wagmi",
               },
               {
                 num: "4",
                 title: "X-PAYMENT",
-                desc: "Gửi chữ ký trong header PAYMENT-SIGNATURE",
+                desc: "Send signature in PAYMENT-SIGNATURE header",
               },
               {
                 num: "5",
                 title: "200",
-                desc: "Facilitator settle → API trả dữ liệu",
+                desc: "Facilitator settle → API returns data",
               },
             ].map((item) => (
               <div

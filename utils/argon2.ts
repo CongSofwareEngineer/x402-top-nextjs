@@ -3,7 +3,7 @@ import { randomBytes, createCipheriv, createDecipheriv } from "crypto";
 import argon2 from "argon2";
 import { CONFIG_ARGON2_CIPHER, CONFIG_ARGON2_DEFAULT } from "@/config/argon2";
 
-// Helper: Đóng gói [salt][iv][ciphertext][tag] → Base64
+// Helper: Pack [salt][iv][ciphertext][tag] → Base64
 const packPayload = (
   salt: Buffer,
   iv: Buffer,
@@ -15,7 +15,7 @@ const packPayload = (
   );
 };
 
-// Helper: Tách payload Base64 → các thành phần
+// Helper: Unpack Base64 payload → components
 const unpackPayload = (
   packed: string,
 ): {
@@ -30,14 +30,14 @@ const unpackPayload = (
   const ivLen = CONFIG_ARGON2_CIPHER.ivLength;
   const tagLen = CONFIG_ARGON2_CIPHER.tagLength;
 
-  // Validate độ dài tối thiểu để tránh crash do offset vô lý
+  // Validate minimum length to prevent crash from invalid offset
   if (buffer.length < saltLen + ivLen + tagLen) {
     throw new Error("Invalid payload format");
   }
 
   let offset = 0;
 
-  // Dùng subarray + Buffer.from để cô lập vùng nhớ an toàn
+  // Use subarray + Buffer.from to isolate safe memory regions
   const salt = Buffer.from(buffer.subarray(offset, offset + saltLen));
   offset += saltLen;
 
@@ -53,17 +53,17 @@ const unpackPayload = (
 };
 
 /**
- * 🔒 Mã hóa Private Key / Dữ liệu nhạy cảm
+ * 🔒 Encrypt Private Key / Sensitive data
  */
 export const encryptData = async (
   data: string,
   password: string,
 ): Promise<string> => {
-  // 1. Sinh salt & IV ngẫu nhiên
+  // 1. Generate random salt & IV
   const salt = randomBytes(CONFIG_ARGON2_DEFAULT.saltLength);
   const iv = randomBytes(CONFIG_ARGON2_CIPHER.ivLength);
 
-  // 2. Derive key bằng Argon2id
+  // 2. Derive key using Argon2id
   const derivedKey = await argon2.hash(password, {
     ...CONFIG_ARGON2_DEFAULT,
     salt,
@@ -73,7 +73,7 @@ export const encryptData = async (
     ? derivedKey
     : Buffer.from(derivedKey as string, "hex");
 
-  // 3. Mã hóa AES-256-GCM (Chỉ lấy 32 bytes đầu cho AES-256)
+  // 3. Encrypt AES-256-GCM (Only take first 32 bytes for AES-256)
   const cipher = createCipheriv(
     CONFIG_ARGON2_CIPHER.algorithm,
     keyBuffer.subarray(0, 32),
@@ -84,21 +84,21 @@ export const encryptData = async (
   encrypted = Buffer.concat([encrypted, cipher.final()]);
   const authTag = cipher.getAuthTag();
 
-  // 4. Đóng gói → Base64
+  // 4. Pack → Base64
   return packPayload(salt, iv, encrypted, authTag);
 };
 
 /**
- * 🔓 Giải mã Private Key / Dữ liệu nhạy cảm
+ * 🔓 Decrypt Private Key / Sensitive data
  */
 export const decryptData = async (
   data: string,
   password: string,
 ): Promise<string> => {
-  // 1. Tách payload
+  // 1. Unpack payload
   const { salt, iv, ciphertext, tag } = unpackPayload(data);
 
-  // 2. Derive key từ password + salt tách từ payload
+  // 2. Derive key from password + salt extracted from payload
   const derivedKey = await argon2.hash(password, {
     ...CONFIG_ARGON2_DEFAULT,
     salt,
@@ -108,7 +108,7 @@ export const decryptData = async (
     ? derivedKey
     : Buffer.from(derivedKey as string, "hex");
 
-  // 3. Giải mã và Verify Auth Tag
+  // 3. Decrypt and Verify Auth Tag
   const decipher = createDecipheriv(
     CONFIG_ARGON2_CIPHER.algorithm,
     keyBuffer.subarray(0, 32),
@@ -122,7 +122,7 @@ export const decryptData = async (
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     return decrypted.toString("utf8");
   } catch {
-    // Trả về lỗi chung để tránh rò rỉ nguyên nhân (sai pass hay dữ liệu bị sửa)
+    // Return generic error to prevent information leakage (wrong password or corrupted data)
     throw new Error("Decryption failed: Invalid password or corrupted payload");
   }
 };
