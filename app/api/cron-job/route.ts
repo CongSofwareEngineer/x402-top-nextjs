@@ -3,7 +3,7 @@ import { Web3Service } from "@/services/web3";
 import type { NextRequest } from "next/server";
 // import { DOMAIN } from "@/config/x402";
 
-const DOMAIN = "https://keyring-agent.blockchhub.link";
+const DOMAIN = process.env.DOMAIN_API;
 
 type PaymentRequired = {
   x402Version: number;
