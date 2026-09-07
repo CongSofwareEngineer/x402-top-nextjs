@@ -1,0 +1,227 @@
+import { NextResponse } from "next/server";
+import { Web3Service } from "@/services/web3";
+import type { NextRequest } from "next/server";
+import { DOMAIN } from "@/config/x402";
+
+// const DOMAIN = "https://keyring-agent.blockchhub.link";
+
+type PaymentRequired = {
+  x402Version: number;
+  error?: string;
+  resource: Record<string, unknown>;
+  accepts: PaymentRequirement[];
+  extensions?: Record<string, unknown>;
+};
+
+type PaymentRequirement = {
+  scheme: string;
+  network: string;
+  amount: string;
+  resource: string;
+  description: string;
+  mimeType: string;
+  payTo: `0x${string}`;
+  maxTimeoutSeconds: number;
+  asset: `0x${string}`;
+  extra?: Record<string, unknown>;
+};
+
+type PaymentPayload = {
+  x402Version: number;
+  payload: {
+    authorization: {
+      from: `0x${string}`;
+      to: `0x${string}`;
+      value: string;
+      validAfter: string;
+      validBefore: string;
+      nonce: `0x${string}`;
+    };
+    signature: `0x${string}`;
+  };
+  accepted?: PaymentRequirement;
+  resource?: Record<string, unknown>;
+  extensions?: Record<string, unknown>;
+};
+
+type Step = {
+  label: string;
+  status: "pending" | "active" | "success" | "error";
+  detail?: string;
+  header?: Record<string, string>;
+};
+
+const base64Encode = (data: string): string =>
+  Buffer.from(data, "utf8").toString("base64");
+
+const base64Decode = (data: string): string =>
+  Buffer.from(data, "base64").toString("utf8");
+
+async function payForEndpoint(): Promise<Step[]> {
+  const url = `${DOMAIN}/api/send-token`;
+  const steps: Step[] = [];
+
+  try {
+    // Bước 1: Gọi API không có header thanh toán
+    steps.push({ label: "Bước 1: Gọi API", status: "active" });
+    const res = await fetch(url);
+
+    if (res.status !== 402) {
+      const data = await res.json();
+      steps.push(
+        {
+          label: "Bước 1: Gọi API",
+          status: "success",
+          detail: "HTTP 200 - Không cần thanh toán",
+        },
+        {
+          label: "Bước 2: Parse Payment-Required",
+          status: "success",
+          detail: "Không có 402",
+        },
+        {
+          label: "Bước 3: Ký chữ ký (Web3Service)",
+          status: "success",
+          detail: "Bỏ qua",
+        },
+        {
+          label: "Bước 4: Gửi PAYMENT-SIGNATURE header",
+          status: "success",
+          detail: "Bỏ qua",
+        },
+        {
+          label: "Bước 5: Nhận kết quả",
+          status: "success",
+          detail: JSON.stringify(data),
+        },
+      );
+      return steps;
+    }
+
+    // Bước 2: Parse Payment-Required (base64)
+    const payEncode = res.headers.get("Payment-Required");
+    if (!payEncode) {
+      throw new Error("Thiếu header Payment-Required");
+    }
+
+    steps.push({
+      label: "Bước 1: Gọi API",
+      status: "success",
+      detail: `HTTP ${res.status} - 402 Payment Required`,
+    });
+    steps.push({
+      label: "Bước 2: Parse Payment-Required",
+      status: "active",
+      detail: "Đang decode base64...",
+    });
+
+    const paymentRequired: PaymentRequired = JSON.parse(
+      base64Decode(payEncode),
+    );
+    const requirement = paymentRequired.accepts[0];
+
+    const resolvedChainId = parseInt(requirement.network.split(":")[1]);
+
+    steps[steps.length - 1] = {
+      label: "Bước 2: Parse Payment-Required",
+      status: "success",
+      detail: `Scheme: ${requirement.scheme}, Network: ${requirement.network}`,
+    };
+
+    // Bước 3: Ký EIP-3009 TransferWithAuthorization bằng private key (Web3Service)
+    const now = Math.floor(Date.now() / 1000);
+    steps.push({
+      label: "Bước 3: Ký chữ ký (Web3Service)",
+      status: "active",
+      detail: "Đang decode PRIVATE_KEY_ENCODE và ký...",
+    });
+
+    const { from, nonce, signature } =
+      await Web3Service.signTransferWithAuthorization({
+        to: requirement.payTo,
+        value: BigInt(requirement.amount ?? "0"),
+        validAfter: BigInt(0),
+        validBefore: BigInt(now + requirement.maxTimeoutSeconds),
+        domain: {
+          name: (requirement.extra?.name as string) ?? "USD Coin",
+          version: (requirement.extra?.version as string) ?? "2",
+          chainId: resolvedChainId,
+          verifyingContract: requirement.asset,
+        },
+      });
+
+    steps[steps.length - 1] = {
+      label: "Bước 3: Ký chữ ký (Web3Service)",
+      status: "success",
+      detail: `Đã ký EIP-3009 bởi ${from}`,
+    };
+
+    steps.push({
+      label: "Bước 4: Gửi PAYMENT-SIGNATURE header",
+      status: "active",
+    });
+
+    const paymentPayload: PaymentPayload = {
+      x402Version: paymentRequired.x402Version,
+      payload: {
+        authorization: {
+          from,
+          to: requirement.payTo,
+          value: requirement.amount,
+          validAfter: "0",
+          validBefore: (now + requirement.maxTimeoutSeconds).toString(),
+          nonce,
+        },
+        signature,
+      },
+      accepted: requirement,
+      resource: paymentRequired.resource,
+      extensions: paymentRequired.extensions,
+    };
+    const paymentHeader = base64Encode(JSON.stringify(paymentPayload));
+
+    const paidRes = await fetch(url, {
+      method: "GET",
+      headers: {
+        "PAYMENT-SIGNATURE": paymentHeader,
+      },
+    });
+
+    if (!paidRes.ok) {
+      const errorText = await paidRes.text();
+      console.log({ errorText, paidRes });
+
+      throw new Error(`Thanh toán thất bại: ${paidRes.status} ${errorText}`);
+    }
+
+    steps[steps.length - 1] = {
+      label: "Bước 4: Gửi PAYMENT-SIGNATURE header",
+      status: "success",
+      detail: `HTTP ${paidRes.status} - Thanh toán thành công`,
+    };
+
+    const header: Record<string, string> = {};
+    paidRes.headers.forEach((value, key) => {
+      header[key] = value;
+    });
+
+    const data = await paidRes.json();
+    steps.push({
+      label: "Bước 5: Nhận kết quả",
+      status: "success",
+      detail: JSON.stringify(data),
+      header,
+    });
+
+    return steps;
+  } catch (err: any) {
+    steps.push({ label: "Lỗi", status: "error", detail: JSON.stringify(err) });
+    return steps;
+  }
+}
+
+export const GET = async (request: NextRequest) => {
+  const results = await payForEndpoint();
+
+  return NextResponse.json({ status: "ok", results });
+};
