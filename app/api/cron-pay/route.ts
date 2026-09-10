@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     const paidRes = await fetch(url, {
       method: 'GET',
       headers: {
-        'PAYMENT-SIGNATURE': String(paymentHeader),
+        'PAYMENT-SIGNATURE': paymentHeader,
       },
     })
 
