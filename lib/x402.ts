@@ -10,13 +10,12 @@
  * CDP-managed wallet — see the README for the `createX402Server` alternative,
  * which provisions one for you.)
  */
-import { x402ResourceServer } from "@x402/core/server";
-import { ExactEvmScheme } from "@x402/evm/exact/server";
-import { createCdpFacilitatorClient } from "@coinbase/cdp-sdk/x402";
-import { NETWORK } from "@/config/x402";
+import { x402ResourceServer } from '@x402/core/server'
+import { ExactEvmScheme } from '@x402/evm/exact/server'
+import { createCdpFacilitatorClient } from '@coinbase/cdp-sdk/x402'
+
+import { NETWORK } from '@/config/x402'
 
 // Before — self-hosted facilitator: new HTTPFacilitatorClient({ url, createAuthHeaders })
 // After  — CDP hosted facilitator (same type, drop-in replacement):
-export const server = new x402ResourceServer(
-  createCdpFacilitatorClient(),
-).register(NETWORK, new ExactEvmScheme());
+export const server = new x402ResourceServer(createCdpFacilitatorClient()).register(NETWORK as any, new ExactEvmScheme())
