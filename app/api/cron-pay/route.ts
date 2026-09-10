@@ -1,3 +1,5 @@
+import { NextResponse } from 'next/server'
+
 export async function GET(req: Request) {
   const query = new URLSearchParams(req.url.split('?')[1])
   const paymentHeader =
@@ -20,8 +22,11 @@ export async function GET(req: Request) {
     })
 
     console.log({ paidRes })
+    if (!paidRes.ok) {
+      return paidRes
+    }
 
-    return paidRes
+    return NextResponse.json({ status: 'ok', results: await paidRes.json() })
   } else {
     const res = await fetch(url)
 
