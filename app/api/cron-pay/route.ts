@@ -1,6 +1,11 @@
 export async function GET(req: Request) {
   const query = new URLSearchParams(req.url.split('?')[1])
-  const paymentHeader = query.get('paymentSignature') || query.get('PAYMENTSIGNATURE')
+  const paymentHeader =
+    req.headers.get('payment-signature') ||
+    req.headers.get('Payment-signature') ||
+    req.headers.get('PAYMENT-SIGNATURE') ||
+    query.get('paymentSignature') ||
+    query.get('PAYMENTSIGNATURE')
 
   const DOMAIN = process.env.DOMAIN_API
 
