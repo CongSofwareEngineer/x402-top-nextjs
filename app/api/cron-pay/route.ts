@@ -11,7 +11,7 @@ export async function GET(req: Request) {
 
   const DOMAIN = process.env.DOMAIN_API
 
-  const url = `${DOMAIN}/api/send-token`
+  const url = `${DOMAIN}/api/report`
 
   if (paymentHeader) {
     const paidRes = await fetch(url, {
