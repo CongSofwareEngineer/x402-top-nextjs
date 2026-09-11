@@ -11,9 +11,11 @@ export const X402_PAID_API_URL = `${DOMAIN}/api/report`
 export const PRICES_USD = {
   report: '0.001',
   'send-token': '0.001',
+  'send-native': '0.001',
 } as const
 
 export const DESCRIPTIONS = {
   report: 'premium agent insight analysis',
   'send-token': 'asset dispatch for autonomous agents',
+  'send-native': 'native token dispatch for autonomous agents',
 } as const satisfies Record<keyof typeof PRICES_USD, string>
