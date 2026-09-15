@@ -860,7 +860,7 @@
     semver "^7.5.4"
     uuid "^9.0.1"
 
-"@msgpack/msgpack@3.1.3":
+"@msgpack/msgpack@3.1.3", "@msgpack/msgpack@^3.1.3":
   version "3.1.3"
   resolved "https://registry.yarnpkg.com/@msgpack/msgpack/-/msgpack-3.1.3.tgz#c4bff2b9539faf0882f3ee03537a7e9a4b3a7864"
   integrity sha512-47XIizs9XZXvuJgoaJUIE2lFoID8ugvc0jzSHP+Ptfk8nTbnR8g788wv48N03Kx0UkAv559HWRQ3yzOgzlRNUA==
@@ -1061,6 +1061,36 @@
   version "0.3.6"
   resolved "https://registry.yarnpkg.com/@pkgr/core/-/core-0.3.6.tgz#3569708bd4be4d8870ba32bf1c456dac81600d97"
   integrity sha512-SEeaJLb3qBNF/OaXnaR1NmmBbFYk1zC0ZH/52fATcRPLFg/p791YrcyFFy44Bo9sLaGuSuLp5Q6axbb/O+v/RA==
+
+"@polymarket/bindings@0.10.0":
+  version "0.10.0"
+  resolved "https://registry.yarnpkg.com/@polymarket/bindings/-/bindings-0.10.0.tgz#35a235c1dc054034b96499a34b2b666fc613f969"
+  integrity sha512-D7HjT2QIge0+n6mfZULl1s7YOz5aQ/j0nvlo/bAieol/hSVDcEklKXpV5mBZ9101EAg1IYzDrn/3AUdwTMtqmw==
+  dependencies:
+    "@polymarket/types" "0.2.0"
+    zod "^4.3.6"
+
+"@polymarket/client@^0.10.0":
+  version "0.10.0"
+  resolved "https://registry.yarnpkg.com/@polymarket/client/-/client-0.10.0.tgz#93ccf873d10c2e47c6ec40a625cfec46411393a1"
+  integrity sha512-nf/aGGWLtoC1k9acaNELHqPx+BWgVNen3xGGMsGZVDUSahhDaacd4o6Msg/kxcJ+tfIjmeAH0web7K5GXm7ezg==
+  dependencies:
+    "@msgpack/msgpack" "^3.1.3"
+    "@polymarket/bindings" "0.10.0"
+    "@polymarket/types" "0.2.0"
+    it-merge "^3.0.14"
+    it-pushable "^3.2.3"
+    ky "^1.14.3"
+    ox "^0.14.16"
+    zod "^4.3.6"
+
+"@polymarket/types@0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@polymarket/types/-/types-0.2.0.tgz#a120017268be26744b65ac90792696f3dead27a8"
+  integrity sha512-j+cr9vZ6ICq88KyTmQMBG1dTtejpruSJntv9TWuGeb3f0inFQFKv+Q/Xc5H0lYUBehBkax3GjcqFTkVTNejMJQ==
+  dependencies:
+    neverthrow "^8.2.0"
+    type-fest "^5.5.0"
 
 "@react-types/shared@3.30.0":
   version "3.30.0"
@@ -1303,6 +1333,11 @@
     viem ">=2.45.0"
   optionalDependencies:
     "@lit/react" "1.0.8"
+
+"@rollup/rollup-linux-x64-gnu@^4.24.0":
+  version "4.63.3"
+  resolved "https://registry.yarnpkg.com/@rollup/rollup-linux-x64-gnu/-/rollup-linux-x64-gnu-4.63.3.tgz#4f437d9e27e8b9146038994eec29aa01d05b50e9"
+  integrity sha512-SXagRwnI2Wlwlitllu59UK/nGVbD1CKPcNqDplHwIC4BqJcpXFjD32d1R/RbuISa95HdQrZM3/7v4bKiowFaLA==
 
 "@rtsao/scc@^1.1.0":
   version "1.1.0"
@@ -2921,6 +2956,11 @@ abort-controller@^3.0.0:
   integrity sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==
   dependencies:
     event-target-shim "^5.0.0"
+
+abort-error@^1.0.2:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/abort-error/-/abort-error-1.0.2.tgz#9fd4b364b3659dadd9ad8af54ec9a1678b51c778"
+  integrity sha512-lVgvB2NyPLqbXXhVmXcYFTC1x5K7CiVdPgdY7LGgFQWC8506oN01sPN3i9cl9ynuwF4iJ0TS9exnR7cZ9FuX4w==
 
 acorn-jsx@^5.3.2:
   version "5.3.2"
@@ -4882,6 +4922,29 @@ isows@1.0.7:
   resolved "https://registry.yarnpkg.com/isows/-/isows-1.0.7.tgz#1c06400b7eed216fbba3bcbd68f12490fc342915"
   integrity sha512-I1fSfDCZL5P0v33sVqeTDSpcstAg/N+wF5HS033mogOVIp4B+oHC7oOCsA3axAbBSGTJ8QubbNmnIRN/h8U7hg==
 
+it-merge@^3.0.14:
+  version "3.0.15"
+  resolved "https://registry.yarnpkg.com/it-merge/-/it-merge-3.0.15.tgz#5b1e31bf894599cda4c706628e464340841d5597"
+  integrity sha512-rUskoyECUdJsUwpfBtiLXddm56J+vukMztq+PpfTss1mRl/aHv1YJs+6Q2XnpvDThFC2y4Xm636X0xh6IecPGg==
+  dependencies:
+    it-queueless-pushable "^2.0.0"
+
+it-pushable@^3.2.3:
+  version "3.2.4"
+  resolved "https://registry.yarnpkg.com/it-pushable/-/it-pushable-3.2.4.tgz#f69c7fc0fa8fa6987c6f31cd1916d0c6d2db5297"
+  integrity sha512-WSD7Ss4oCRfDZJT4ldLWr0Bom/muY90xxoJ5PQnU3uSKf0kxCOeehqZtiJX1ARqn+ymXGh1bxpDW9bDNHp2ivQ==
+  dependencies:
+    p-defer "^4.0.0"
+
+it-queueless-pushable@^2.0.0:
+  version "2.0.5"
+  resolved "https://registry.yarnpkg.com/it-queueless-pushable/-/it-queueless-pushable-2.0.5.tgz#893a8e0282f8d5b02239b0075fe594b9776296ed"
+  integrity sha512-BaKqGLL1AQMR1AEaxiM09vzJQVXHHhfhh9UV0qPqORw/8Rm8igDQqT1qHregfHIb1NIW9jxQ/aXBibHJyuivuQ==
+  dependencies:
+    abort-error "^1.0.2"
+    p-defer "^4.0.1"
+    race-signal "^2.0.0"
+
 iterator.prototype@^1.1.5:
   version "1.1.5"
   resolved "https://registry.yarnpkg.com/iterator.prototype/-/iterator.prototype-1.1.5.tgz#12c959a29de32de0aa3bbbb801f4d777066dae39"
@@ -5001,6 +5064,11 @@ keyvaluestorage-interface@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/keyvaluestorage-interface/-/keyvaluestorage-interface-1.0.0.tgz#13ebdf71f5284ad54be94bd1ad9ed79adad515ff"
   integrity sha512-8t6Q3TclQ4uZynJY9IGr2+SsIGwK9JHcO6ootkHCGA0CrQCRy+VkouYNO2xicET6b9al7QKzpebNow+gkpCL8g==
+
+ky@^1.14.3:
+  version "1.14.3"
+  resolved "https://registry.yarnpkg.com/ky/-/ky-1.14.3.tgz#d7fcc6ac93d1588accee72cc44dcc6cf84c0bdaa"
+  integrity sha512-9zy9lkjac+TR1c2tG+mkNSVlyOpInnWdSMiue4F+kq8TwJSgv6o8jhLRg8Ho6SnZ9wOYUq/yozts9qQCfk7bIw==
 
 language-subtag-registry@^0.3.20:
   version "0.3.23"
@@ -5285,6 +5353,13 @@ natural-compare@^1.4.0:
   resolved "https://registry.yarnpkg.com/natural-compare/-/natural-compare-1.4.0.tgz#4abebfeed7541f2c27acfb29bdbbd15c8d5ba4f7"
   integrity sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==
 
+neverthrow@^8.2.0:
+  version "8.2.0"
+  resolved "https://registry.yarnpkg.com/neverthrow/-/neverthrow-8.2.0.tgz#925d988295758534d01fb7468f998680b62064f2"
+  integrity sha512-kOCT/1MCPAxY5iUV3wytNFUMUolzuwd/VF/1KCx7kf6CutrOsTie+84zTGTpgQycjvfLdBBdvBvFLqFD2c0wkQ==
+  optionalDependencies:
+    "@rollup/rollup-linux-x64-gnu" "^4.24.0"
+
 next@^16.3.3:
   version "16.3.4"
   resolved "https://registry.yarnpkg.com/next/-/next-16.3.4.tgz#eaa69d905ac44ad8d57e8f3461d9da0fc4a7058b"
@@ -5499,7 +5574,7 @@ own-keys@^1.0.1:
     object-keys "^1.1.1"
     safe-push-apply "^1.0.0"
 
-ox@0.14.44:
+ox@0.14.44, ox@^0.14.16:
   version "0.14.44"
   resolved "https://registry.yarnpkg.com/ox/-/ox-0.14.44.tgz#58cda086c7e2d4c3ba39f08a33778c47de5e2dee"
   integrity sha512-O54qXXHEk4ySamMSyBpI0AeBegS5frxU6+LA6Jb9Sf6kMOxcTNaxYmwZfpOu22DIQsdKfgQxHq8EsAGaoBQScA==
@@ -5566,6 +5641,11 @@ ox@^0.9.6:
     "@scure/bip39" "^1.6.0"
     abitype "^1.0.9"
     eventemitter3 "5.0.1"
+
+p-defer@^4.0.0, p-defer@^4.0.1:
+  version "4.0.1"
+  resolved "https://registry.yarnpkg.com/p-defer/-/p-defer-4.0.1.tgz#d12c6d41420785ed0d162dbd86b71ba490f7f99e"
+  integrity sha512-Mr5KC5efvAK5VUptYEIopP1bakB85k2IWXaRC0rsh1uwn1L6M0LVml8OIQ4Gudg4oyZakf7FmeRLkMMtZW1i5A==
 
 p-limit@^2.2.0:
   version "2.3.0"
@@ -5869,6 +5949,11 @@ quick-format-unescaped@^4.0.3:
   version "4.0.4"
   resolved "https://registry.yarnpkg.com/quick-format-unescaped/-/quick-format-unescaped-4.0.4.tgz#93ef6dd8d3453cbc7970dd614fad4c5954d6b5a7"
   integrity sha512-tYC1Q1hgyRuHgloV/YXs2w15unPVh8qfu/qCTfhTYamaw7fyhumKa2yGpdSo87vY32rIclj+4fWYQXUMs9EHvg==
+
+race-signal@^2.0.0:
+  version "2.0.2"
+  resolved "https://registry.yarnpkg.com/race-signal/-/race-signal-2.0.2.tgz#be5ddd1fc6bd44663772a67ff7c6bdfa1e99c90a"
+  integrity sha512-IuNNNY5NLriMFEGl3BVei2xq9NIcpkuAklhPWamhu5tRJrJz0w9sloUMz73YXpmUluE2EZocmJm9rpQqXmCPiA==
 
 radix3@^1.1.2:
   version "1.1.2"
@@ -6440,6 +6525,11 @@ synckit@^0.11.13:
   dependencies:
     "@pkgr/core" "^0.3.6"
 
+tagged-tag@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/tagged-tag/-/tagged-tag-1.0.0.tgz#a0b5917c2864cba54841495abfa3f6b13edcf4d6"
+  integrity sha512-yEFYrVhod+hdNyx7g5Bnkkb0G6si8HJurOoOEgC8B/O0uXLHlaey/65KRv6cuWBNhBgHKAROVpc7QyYqE5gFng==
+
 tailwind-merge@^2.5.4:
   version "2.6.1"
   resolved "https://registry.yarnpkg.com/tailwind-merge/-/tailwind-merge-2.6.1.tgz#a9d58240f664d21c33c379a092d9a273f833443b"
@@ -6541,6 +6631,13 @@ type-check@^0.4.0, type-check@~0.4.0:
   integrity sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==
   dependencies:
     prelude-ls "^1.2.1"
+
+type-fest@^5.5.0:
+  version "5.9.0"
+  resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-5.9.0.tgz#0a4dd554d397f1a44447477eaeb3d1f4d8c7680f"
+  integrity sha512-yANm3Jr3GiJ1qgJlxGAVxTOIcEOk1rhQHamlXtnrCK7EHP4HeM9OGxtMg/W7HFdrVzw/ZWJKGVIJusVH85sLtw==
+  dependencies:
+    tagged-tag "^1.0.0"
 
 typed-array-buffer@^1.0.3:
   version "1.0.3"
@@ -7025,6 +7122,11 @@ zod@^3.24.2, zod@^3.25.76:
   version "4.5.4"
   resolved "https://registry.yarnpkg.com/zod/-/zod-4.5.4.tgz#e215c62420c528dd7951e31fb52c5438f1fd184a"
   integrity sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==
+
+zod@^4.3.6:
+  version "4.6.5"
+  resolved "https://registry.yarnpkg.com/zod/-/zod-4.6.5.tgz#e3af3edbdc260239c52f73caad05dbbffe6e82cd"
+  integrity sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==
 
 zustand@5.0.0:
   version "5.0.0"

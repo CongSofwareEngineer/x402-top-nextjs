@@ -4,8 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createAppKit } from '@reown/appkit/react'
 import React, { type ReactNode } from 'react'
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
+import { base } from 'viem/chains'
 
-import { CHAIN_APP, projectId, wagmiAdapter } from '@/config/appkit'
+import { CHAIN_APP, CHAIN_SUPPORT, DEFAULT_NETWORK, projectId, wagmiAdapter } from '@/config/appkit'
 
 // Set up queryClient
 const queryClient = new QueryClient()
@@ -26,8 +27,8 @@ const metadata = {
 const modal = createAppKit({
   adapters: [wagmiAdapter],
   projectId,
-  networks: [CHAIN_APP],
-  defaultNetwork: CHAIN_APP,
+  networks: [DEFAULT_NETWORK, ...CHAIN_SUPPORT],
+  defaultNetwork: DEFAULT_NETWORK,
   metadata: metadata,
   features: {
     analytics: true, // Optional - defaults to your Cloud configuration

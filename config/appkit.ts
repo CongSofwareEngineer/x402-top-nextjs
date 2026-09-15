@@ -1,6 +1,6 @@
 import { cookieStorage, createStorage, http } from '@wagmi/core'
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
-import { base, baseSepolia } from '@reown/appkit/networks'
+import { base, baseSepolia, bsc, optimism, polygon } from '@reown/appkit/networks'
 
 export const CHAIN_APP = baseSepolia
 // Get projectId from https://dashboard.reown.com
@@ -10,7 +10,8 @@ if (!projectId) {
   throw new Error('Project ID is not defined')
 }
 
-export const networks = [CHAIN_APP]
+export const DEFAULT_NETWORK = base
+export const CHAIN_SUPPORT = [DEFAULT_NETWORK, bsc, polygon, optimism]
 
 //Set up the Wagmi Adapter (Config)
 export const wagmiAdapter = new WagmiAdapter({
@@ -19,7 +20,7 @@ export const wagmiAdapter = new WagmiAdapter({
   }),
   ssr: true,
   projectId,
-  networks,
+  networks: CHAIN_SUPPORT,
   syncConnectedChain: true,
   batch: {
     multicall: {

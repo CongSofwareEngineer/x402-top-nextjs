@@ -1,4 +1,4 @@
-import argon2 from "argon2";
+import argon2 from 'argon2'
 
 export const CONFIG_ARGON2_DEFAULT = {
   // Argon2id params (OWASP recommended for high-security applications)
@@ -9,13 +9,13 @@ export const CONFIG_ARGON2_DEFAULT = {
   hashLength: 32, // 256-bit output (sufficient for AES-256 key)
   saltLength: 32, // 256-bit salt
   raw: true, // Returns raw buffer instead of hex string
-} as const;
+} as const
 
 export const CONFIG_ARGON2_CIPHER = {
-  algorithm: "aes-256-gcm",
+  algorithm: 'aes-256-gcm',
   ivLength: 12, // 96-bit nonce (NIST SP 800-38D)
   tagLength: 16, // 128-bit auth tag
 
   // Encoding
-  encoding: "base64" as const,
-} as const;
+  encoding: 'base64' as const,
+} as const

@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@polymarket/client": "^0.10.0",
     "@reown/appkit": "^1.8.23",
     "@reown/appkit-adapter-wagmi": "^1.8.23",
     "@tanstack/react-query": "^5.102.8",
@@ -28,23 +29,21 @@
     "x402": "^1.2.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.3",
-    "tailwindcss": "^4.3.3",
-    "typescript": "^5",
     "@eslint/compat": "1.2.8",
     "@eslint/eslintrc": "3.3.1",
     "@eslint/js": "9.25.1",
     "@next/eslint-plugin-next": "15.3.1",
     "@react-types/shared": "3.30.0",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/crypto-js": "^4.2.2",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "@typescript-eslint/eslint-plugin": "8.31.1",
     "@typescript-eslint/parser": "8.31.1",
     "autoprefixer": "10.4.21",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.3",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-import": "2.31.0",
     "eslint-plugin-jsx-a11y": "6.10.2",
@@ -56,6 +55,8 @@
     "globals": "16.0.0",
     "postcss": "8.5.3",
     "prettier": "^3.5.3",
-    "tailwind-variants": "0.3.0"
+    "tailwind-variants": "0.3.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5"
   }
 }
