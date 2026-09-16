@@ -3,16 +3,16 @@
 import { useState } from 'react'
 import { useAppKitAccount } from '@reown/appkit/react'
 
-import { useCancelOrder, useClobSession, usePolymarketActivity, usePolymarketOpenOrders } from '@/hooks/polymarket'
+import { useCancelOrder, useClobSession, usePolyMarketActivity, usePolyMarketOpenOrders } from '@/hooks/polymarket'
 import { EXPLORERS } from '@/constants/polymarket'
 
 export function HistoryTab() {
-  const { address, isConnected } = useAppKitAccount()
+  const { isConnected } = useAppKitAccount()
   const [activeTab, setActiveTab] = useState<'trades' | 'orders'>('trades')
 
-  const { data: activity, isLoading: tradesLoading, isError: tradesError } = usePolymarketActivity(address)
+  const { data: activity, isLoading: tradesLoading, isError: tradesError } = usePolyMarketActivity()
   const { isAuthenticated, authenticate, isLoading: authLoading, error: authError } = useClobSession()
-  const { data: orders = [], isLoading: ordersLoading } = usePolymarketOpenOrders()
+  const { data: orders = [], isLoading: ordersLoading } = usePolyMarketOpenOrders()
   const { mutate: cancelOrder, isPending: cancelPending } = useCancelOrder()
 
   const trades = activity?.items ?? []

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from '@tanstack/react-query'
 
-import { REACT_QUERY_POLYMARKET } from '@/constants/reactQuery'
+import { REACT_QUERY_POLY_MARKET } from '@/constants/reactQuery'
 import {
   createDepositAddress,
   createWithdrawalAddress,
@@ -19,7 +19,7 @@ import {
 /** Assets accepted by the bridge (deposit/withdraw destinations). */
 export function useSupportedAssets() {
   return useQuery({
-    queryKey: [REACT_QUERY_POLYMARKET.SUPPORTED_ASSETS],
+    queryKey: [REACT_QUERY_POLY_MARKET.SUPPORTED_ASSETS],
     queryFn: (): Promise<SupportedAsset[]> => getSupportedAssets(),
     staleTime: 3_600_000,
   })
@@ -28,7 +28,7 @@ export function useSupportedAssets() {
 /** Deposit/withdraw transactions observed at a wallet's bridge address. */
 export function useBridgeStatus(address: string | undefined) {
   return useQuery({
-    queryKey: [REACT_QUERY_POLYMARKET.BRIDGE_STATUS, address?.toLowerCase()],
+    queryKey: [REACT_QUERY_POLY_MARKET.BRIDGE_STATUS, address?.toLowerCase()],
     queryFn: (): Promise<BridgeStatusResponse> => getBridgeStatus(address!),
     enabled: !!address,
     staleTime: 30_000,
@@ -42,8 +42,8 @@ export function useBridgeStatus(address: string | undefined) {
  */
 export function useCreateDepositAddress() {
   return useMutation({
-    mutationFn: (params: { address: string; builderCode?: string }): Promise<BridgeDepositResponse> =>
-      createDepositAddress(params.address, params.builderCode),
+    mutationFn: (params: { headers: Record<string, string>; body: Record<string, string> }): Promise<BridgeDepositResponse> =>
+      createDepositAddress(params.body, params.headers),
   })
 }
 

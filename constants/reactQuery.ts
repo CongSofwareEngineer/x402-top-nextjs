@@ -4,7 +4,7 @@ export enum REACT_QUERY {
   ACCOUNT_HISTORY_POLYMARKET = 'account_history_polymarket',
 }
 
-export enum REACT_QUERY_POLYMARKET {
+export enum REACT_QUERY_POLY_MARKET {
   PORTFOLIO_VALUE = 'polymarket_portfolio_value',
   POSITIONS = 'polymarket_positions',
   ACTIVITY = 'polymarket_activity',
@@ -22,4 +22,6 @@ export enum REACT_QUERY_POLYMARKET {
   SUPPORTED_ASSETS = 'polymarket_supported_assets',
   BRIDGE_QUOTE = 'polymarket_bridge_quote',
   PROFILE = 'polymarket_profile',
+  IS_DEPLOY = 'polymarket_is_deploy',
+  DEPLOY_SAFE = 'polymarket_deploy_safe',
 }

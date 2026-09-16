@@ -133,6 +133,17 @@ export async function getProfileByAddress(address: string): Promise<PublicProfil
   }
 }
 
+export async function getIsDeploy(address: string): Promise<boolean> {
+  try {
+    const res = await requestJson<{ deployed: boolean }>(baseUrl('RELAYER'), `/deployed?type=SAFE&address=${address}`)
+
+    return res?.deployed
+  } catch (error) {
+    if (error instanceof PolymarketApiError && error.status === 404) return false
+    throw error
+  }
+}
+
 /** Search events/tags/profiles (used for quick navigation). */
 export async function searchPublic(query: string): Promise<{ events: { id: string; slug?: string; title?: string }[]; tags: GammaTag[] }> {
   const data = await requestJson<{

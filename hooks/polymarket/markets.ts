@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { REACT_QUERY } from '@/constants/reactQuery'
-import { REACT_QUERY_POLYMARKET } from '@/constants/reactQuery'
+import { REACT_QUERY_POLY_MARKET } from '@/constants/reactQuery'
 import { getMarketPrice, getMidpoint, getOrderBook, listMarkets, listTags, type MarketFilters } from '@/services/polymarket'
 
 export interface Category {
@@ -13,9 +13,9 @@ export interface Category {
 }
 
 /** Fetch markets and extract unique tags as categories sorted by count. */
-export function usePolymarketCategories() {
+export function usePolyMarketCategories() {
   return useQuery<Category[]>({
-    queryKey: [REACT_QUERY_POLYMARKET.CATEGORIES],
+    queryKey: [REACT_QUERY_POLY_MARKET.CATEGORIES],
     queryFn: async () => {
       const { markets } = await listMarkets({ limit: 500 })
       const tagMap = new Map<string, { id: string; label: string; count: number }>()
@@ -23,6 +23,7 @@ export function usePolymarketCategories() {
       markets.forEach((market) => {
         market.tags?.forEach((tag) => {
           const existing = tagMap.get(tag.id)
+
           if (existing) {
             existing.count++
           } else {
@@ -36,6 +37,7 @@ export function usePolymarketCategories() {
       })
 
       const categories = Array.from(tagMap.values()).sort((a, b) => b.count - a.count)
+
       return [{ id: 'all', label: 'All', count: markets.length }, ...categories]
     },
     staleTime: 3_600_000,
@@ -43,7 +45,7 @@ export function usePolymarketCategories() {
 }
 
 /** Cursor-paginated market list (Gamma `/markets/keyset`). */
-export function usePolymarketMarkets(filters: MarketFilters) {
+export function usePolyMarketMarkets(filters: MarketFilters) {
   return useQuery({
     queryKey: [REACT_QUERY.LIST_MARKET_POLMARKET, filters],
     queryFn: () => listMarkets(filters),
@@ -53,18 +55,18 @@ export function usePolymarketMarkets(filters: MarketFilters) {
 }
 
 /** Available market categories with images. */
-export function usePolymarketTags() {
+export function usePolyMarketTags() {
   return useQuery({
-    queryKey: [REACT_QUERY_POLYMARKET.TAGS],
+    queryKey: [REACT_QUERY_POLY_MARKET.TAGS],
     queryFn: () => listTags(),
     staleTime: 3_600_000,
   })
 }
 
 /** CLOB orderbook for an outcome token. */
-export function usePolymarketOrderBook(tokenId: string | undefined) {
+export function usePolyMarketOrderBook(tokenId: string | undefined) {
   return useQuery({
-    queryKey: [REACT_QUERY_POLYMARKET.ORDER_BOOK, tokenId],
+    queryKey: [REACT_QUERY_POLY_MARKET.ORDER_BOOK, tokenId],
     queryFn: () => getOrderBook(tokenId!),
     enabled: !!tokenId,
     staleTime: 5_000,
@@ -73,9 +75,9 @@ export function usePolymarketOrderBook(tokenId: string | undefined) {
 }
 
 /** Best bid (BUY) or ask (SELL) for an outcome token. */
-export function usePolymarketPrice(tokenId: string | undefined, side: 'BUY' | 'SELL') {
+export function usePolyMarketPrice(tokenId: string | undefined, side: 'BUY' | 'SELL') {
   return useQuery({
-    queryKey: [REACT_QUERY_POLYMARKET.MARKET_PRICE, tokenId, side],
+    queryKey: [REACT_QUERY_POLY_MARKET.MARKET_PRICE, tokenId, side],
     queryFn: () => getMarketPrice(tokenId!, side),
     enabled: !!tokenId,
     staleTime: 5_000,
@@ -84,9 +86,9 @@ export function usePolymarketPrice(tokenId: string | undefined, side: 'BUY' | 'S
 }
 
 /** Midpoint of best bid/ask for an outcome token. */
-export function usePolymarketMidpoint(tokenId: string | undefined) {
+export function usePolyMarketMidpoint(tokenId: string | undefined) {
   return useQuery({
-    queryKey: [REACT_QUERY_POLYMARKET.MARKET_PRICE, tokenId, 'midpoint'],
+    queryKey: [REACT_QUERY_POLY_MARKET.MARKET_PRICE, tokenId, 'midpoint'],
     queryFn: () => getMidpoint(tokenId!),
     enabled: !!tokenId,
     staleTime: 5_000,

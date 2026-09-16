@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 
-import { usePolymarketMarkets } from '@/hooks/polymarket'
+import { usePolyMarketMarkets } from '@/hooks/polymarket'
 import { type Market } from '@/services/polymarket'
 import { MARKET_SORT_PRESETS, PAGINATION, POLYMARKET_CATEGORIES, type MarketSortKey } from '@/constants/polymarket'
 
@@ -29,7 +29,7 @@ export function MarketsTab({ onMarketSelect }: MarketsTabProps) {
     }
   }, [sortKey, categoryId, cursor])
 
-  const { data, isLoading, error, refetch, isFetching } = usePolymarketMarkets(queryFilters)
+  const { data, isLoading, error, refetch, isFetching } = usePolyMarketMarkets(queryFilters)
 
   const markets = data?.markets ?? []
 

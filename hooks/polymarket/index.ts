@@ -1,12 +1,14 @@
 export { useClobSession } from './session'
-export { usePolymarketMarkets, usePolymarketTags, usePolymarketOrderBook, usePolymarketPrice, usePolymarketMidpoint } from './markets'
+export { usePolyMarketMarkets, usePolyMarketTags, usePolyMarketOrderBook, usePolyMarketPrice, usePolyMarketMidpoint } from './markets'
 export {
-  usePolymarketAccount,
-  usePolymarketPortfolio,
-  usePolymarketPositions,
-  usePolymarketActivity,
-  usePolymarketUserStats,
-  usePolymarketProfile,
+  usePolyMarketAccount,
+  usePolyMarketPortfolio,
+  usePolyMarketPositions,
+  usePolyMarketActivity,
+  usePolyMarketUserStats,
+  usePolyMarketProfile,
+  usePolyMarketIsDeploy,
 } from './account'
-export { usePolymarketOpenOrders, usePlaceOrder, useCancelOrder } from './orders'
+export { useDeploySafe } from './deploy'
+export { usePolyMarketOpenOrders, usePlaceOrder, useCancelOrder } from './orders'
 export { useSupportedAssets, useBridgeStatus, useCreateDepositAddress, useCreateWithdrawalAddress, useBridgeQuote } from './bridge'

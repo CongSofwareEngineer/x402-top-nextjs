@@ -4,7 +4,7 @@ import type { Market, OrderSide } from '@/services/polymarket'
 
 import { useMemo, useState } from 'react'
 
-import { useClobSession, usePlaceOrder, usePolymarketOrderBook } from '@/hooks/polymarket'
+import { useClobSession, usePlaceOrder, usePolyMarketOrderBook } from '@/hooks/polymarket'
 import { ORDER_SIDE, ORDER_TYPE } from '@/constants/polymarket'
 
 interface TradeTabProps {
@@ -23,7 +23,7 @@ export function TradeTab({ market }: TradeTabProps) {
 
   const tokenId = tokenIds[outcomeIndex]
 
-  const { data: orderBook } = usePolymarketOrderBook(tokenId)
+  const { data: orderBook } = usePolyMarketOrderBook(tokenId)
   const { isAuthenticated, authenticate, isLoading: authLoading, error: authError } = useClobSession()
   const { mutate: placeOrder, isPending: orderPending, error: orderError, data: orderResult } = usePlaceOrder()
 

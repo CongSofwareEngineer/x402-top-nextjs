@@ -8,7 +8,7 @@ import { useSignTypedData } from 'wagmi'
 
 import { useClobSession } from './session'
 
-import { REACT_QUERY_POLYMARKET } from '@/constants/reactQuery'
+import { REACT_QUERY_POLY_MARKET } from '@/constants/reactQuery'
 import {
   signExchangeOrder,
   type CancelOrderResponse,
@@ -18,11 +18,11 @@ import {
   type SignTypedData,
 } from '@/services/polymarket'
 
-export function usePolymarketOpenOrders() {
+export function usePolyMarketOpenOrders() {
   const { session } = useClobSession()
 
   return useQuery({
-    queryKey: [REACT_QUERY_POLYMARKET.OPEN_ORDERS, session?.address?.toLowerCase()],
+    queryKey: [REACT_QUERY_POLY_MARKET.OPEN_ORDERS, session?.address?.toLowerCase()],
     queryFn: (): Promise<OpenOrder[]> => session!.getOrders(),
     enabled: !!session,
     staleTime: 15_000,
@@ -54,11 +54,11 @@ export function usePlaceOrder() {
     onSuccess: () => {
       const accountKey = address?.toLowerCase()
 
-      queryClient.invalidateQueries({ queryKey: [REACT_QUERY_POLYMARKET.OPEN_ORDERS, accountKey] })
-      queryClient.invalidateQueries({ queryKey: [REACT_QUERY_POLYMARKET.ACTIVITY] })
-      queryClient.invalidateQueries({ queryKey: [REACT_QUERY_POLYMARKET.POSITIONS] })
-      queryClient.invalidateQueries({ queryKey: [REACT_QUERY_POLYMARKET.PORTFOLIO_VALUE] })
-      queryClient.invalidateQueries({ queryKey: [REACT_QUERY_POLYMARKET.ORDER_BOOK] })
+      queryClient.invalidateQueries({ queryKey: [REACT_QUERY_POLY_MARKET.OPEN_ORDERS, accountKey] })
+      queryClient.invalidateQueries({ queryKey: [REACT_QUERY_POLY_MARKET.ACTIVITY] })
+      queryClient.invalidateQueries({ queryKey: [REACT_QUERY_POLY_MARKET.POSITIONS] })
+      queryClient.invalidateQueries({ queryKey: [REACT_QUERY_POLY_MARKET.PORTFOLIO_VALUE] })
+      queryClient.invalidateQueries({ queryKey: [REACT_QUERY_POLY_MARKET.ORDER_BOOK] })
     },
   })
 }
@@ -76,7 +76,7 @@ export function useCancelOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [REACT_QUERY_POLYMARKET.OPEN_ORDERS, address?.toLowerCase()],
+        queryKey: [REACT_QUERY_POLY_MARKET.OPEN_ORDERS, address?.toLowerCase()],
       })
     },
   })

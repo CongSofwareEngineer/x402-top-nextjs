@@ -1,0 +1,3 @@
+export enum CONTRACT_POLY_MARKET {
+  DepositWalletFactory = '0x00000000000Fb5C9ADea0298D729A0CB3823Cc07',
+}
