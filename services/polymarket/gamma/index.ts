@@ -1,37 +1,9 @@
-import { builderHeader } from './bridge'
-import { PolymarketApiError, baseUrl, parseJsonArray, requestJson, toNumber } from './client'
-import { type GammaCategory, type GammaEvent, type GammaTag, type Market, type MarketFilters, type MarketsResult, type PublicProfile } from './types'
+import { builderHeader } from '../bridge'
+import { PolymarketApiError, baseUrl, parseJsonArray, requestJson, toNumber } from '../client'
+import { type GammaTag, type Market, type MarketFilters, type MarketsResult, type PublicProfile } from '../types'
+import type { GammaMarketRow } from './type'
 
 import { KEY_POLY_MARKET } from '@/config/polymarket'
-
-interface GammaMarketRow {
-  id: string
-  slug?: string | null
-  question?: string | null
-  description?: string | null
-  conditionId?: string | null
-  clobTokenIds?: string | null
-  outcomes?: string | null
-  outcomePrices?: string | null
-  volume?: string | null
-  volumeNum?: number | null
-  liquidity?: string | null
-  liquidityNum?: number | null
-  volume24hr?: string | null
-  active?: boolean | null
-  closed?: boolean | null
-  image?: string | null
-  icon?: string | null
-  startDate?: string | null
-  endDate?: string | null
-  lastTradePrice?: string | null
-  oneDayPriceChange?: string | null
-  orderPriceMinTickSize?: string | null
-  orderMinSize?: string | null
-  tags?: GammaTag[] | null
-  categories?: GammaCategory[] | null
-  events?: GammaEvent[] | null
-}
 
 export function mapGammaMarket(row: GammaMarketRow): Market {
   const outcomes = parseJsonArray<string>(row.outcomes, [])
@@ -129,7 +101,7 @@ export async function listTags(limit = 100): Promise<GammaTag[]> {
 /** Public profile for a wallet. Returns null when the address has no profile. */
 export async function getProfileByAddress(address: string): Promise<PublicProfile | null> {
   try {
-    const [profileRes, bridgeRes] = await Promise.allSettled([
+    const [profile, bridge] = await Promise.all([
       requestJson<PublicProfile>(baseUrl('GAMA'), `/public-profile?address=${address}`),
       requestJson(baseUrl('BRIDGE'), `/deposit`, {
         method: 'POST',
@@ -141,8 +113,6 @@ export async function getProfileByAddress(address: string): Promise<PublicProfil
         },
       }),
     ])
-    const profile = profileRes?.status === 'fulfilled' ? profileRes?.value : null
-    const bridge = bridgeRes?.status === 'fulfilled' ? bridgeRes?.value : null
 
     return { ...profile, bridge } as PublicProfile
   } catch (error) {

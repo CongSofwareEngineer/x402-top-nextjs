@@ -1,0 +1,1 @@
+export const ADDRESS_NULL_OTHER = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'

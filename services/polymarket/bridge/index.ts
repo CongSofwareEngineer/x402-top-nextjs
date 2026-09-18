@@ -1,14 +1,15 @@
 import { zeroAddress, type Address, type Hex } from 'viem'
-import { buildHmacSignature } from '@polymarket/builder-signing-sdk'
 
-import { baseUrl, requestJson } from './client'
-import { type BridgeDepositResponse, type BridgeQuote, type BridgeQuoteRequest, type BridgeStatusResponse, type SupportedAsset } from './types'
+import { baseUrl, requestJson } from '../client'
+import { type BridgeDepositResponse, type BridgeQuote, type BridgeQuoteRequest, type BridgeStatusResponse, type SupportedAsset } from '../types'
 
 import { KEY_POLY_MARKET } from '@/config/polymarket'
 import { lowerCase, sleep } from '@/utils/functions'
 import { CONTRACT_POLY_MARKET } from '@/constants/contractPolyMarket'
 import { SUBMIT_TRANSACTION } from '@/constants/polymarket'
+import { buildHmacSignature } from '@/utils/relay'
 import { ADDRESS_NULL_OTHER } from '@/constants/token'
+
 /**
  * Bridge API — deposit/withdraw addresses, quotes and transfer status.
  * Base URL: https://bridge.polymarket.com
@@ -38,16 +39,16 @@ export async function getSupportedAssets(): Promise<SupportedAsset[]> {
   })
 }
 
-export const builderHeader = async (method: string, path: string, bodyString: string, timestamp?: number) => {
+export const builderHeader = async (method: string, path: string, bodyString: string, timestamp: number) => {
   const timestampTemp = timestamp ?? Math.floor(Date.now() / 1000)
   const builderSecret = KEY_POLY_MARKET.Builder.Secret
   const builderApiKey = KEY_POLY_MARKET.Builder.ApiKey
   const builderPassphrase = KEY_POLY_MARKET.Builder.Passphrase
-  const signature = buildHmacSignature(builderSecret, timestampTemp, method, path, bodyString)
+  const signature = await buildHmacSignature(builderSecret, timestampTemp, method, path, bodyString)
 
   return {
     POLY_BUILDER_API_KEY: builderApiKey,
-    POLY_BUILDER_TIMESTAMP: timestampTemp.toString(),
+    POLY_BUILDER_TIMESTAMP: `${timestamp}`,
     POLY_BUILDER_PASSPHRASE: builderPassphrase,
     POLY_BUILDER_SIGNATURE: signature,
   }
@@ -71,7 +72,7 @@ export async function createDepositAddress(address: string | Hex): Promise<Bridg
 
   const headers = await builderHeader(method, path, bodyString, timestamp)
 
-  const res = await requestJson<BridgeDepositResponse>(baseUrl('RELAYER'), '/submit', {
+  const res = await requestJson<BridgeDepositResponse>(baseUrl('RELAYER'), path, {
     method,
     headers,
     body: bodyString,

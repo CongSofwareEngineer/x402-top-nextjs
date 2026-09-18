@@ -24,16 +24,17 @@ const metadata = {
 }
 
 // Create the modal
-const modal = createAppKit({
+export const appkit = createAppKit({
   adapters: [wagmiAdapter],
   projectId,
-  networks: [DEFAULT_NETWORK, ...CHAIN_SUPPORT],
+  networks: [...CHAIN_SUPPORT] as any,
   defaultNetwork: DEFAULT_NETWORK,
   metadata: metadata,
   features: {
     analytics: true, // Optional - defaults to your Cloud configuration
   },
   enableReconnect: true,
+  allowUnsupportedChain: true,
 })
 
 function AppkitProvider({ children, cookies }: { children: ReactNode; cookies: string | null }) {

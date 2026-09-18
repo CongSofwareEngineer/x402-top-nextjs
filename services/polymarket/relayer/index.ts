@@ -1,37 +1,13 @@
+import type { BuilderAuthConfig, DeploySafeResult, RelayPayloadResponse, RelayerTransactionResponse, SubmitResponse } from './type'
+
 import { createHmac } from 'node:crypto'
 
-import { baseUrl, requestJson } from './client'
+import { baseUrl, requestJson } from '../client'
+import { builderHeader } from '../bridge'
 
-interface BuilderAuthConfig {
-  apiKey: string
-  passphrase: string
-  secret: string
-}
-
-interface RelayPayloadResponse {
-  address: string
-  nonce: string
-}
-
-interface SubmitResponse {
-  transactionID: string
-  state: string
-}
-
-interface RelayerTransactionResponse {
-  transactionID: string
-  transactionHash: string | null
-  proxyAddress?: string
-  state: string
-  error_msg?: string | null
-  [key: string]: unknown
-}
-
-interface DeploySafeResult {
-  transactionHash: string | null
-  proxyAddress?: string
-  state: string
-}
+import { SUBMIT_TRANSACTION, TransactionType } from '@/constants/polymarket'
+import { buildDepositWalletBatchRequest } from '@/utils/tokens'
+import { KEY_POLY_MARKET } from '@/config/polymarket'
 
 /**
  * Build the canonical HMAC-SHA256 signature for Builder-authenticated
@@ -145,6 +121,24 @@ export async function deploySafe(signerAddress: string): Promise<DeploySafeResul
     proxyAddress: tx.proxyAddress,
     state: tx.state,
   }
+}
+
+export const approveAllToken = async (body: Record<string, any>) => {
+  const method = 'POST'
+  const path = SUBMIT_TRANSACTION
+  const bodyString = JSON.stringify(body)
+
+  const headers = await builderHeader(method, path, bodyString)
+
+  return requestJson<SubmitResponse>(baseUrl('RELAYER'), path, {
+    method,
+    headers,
+    body: bodyString,
+  })
+}
+
+export const getNonce = async (address: string) => {
+  return requestJson<{ nonce: string }>(baseUrl('RELAYER'), `/nonce?type=${TransactionType.WALLET}&address=${address}`)
 }
 
 export type { BuilderAuthConfig, RelayPayloadResponse, SubmitResponse, RelayerTransactionResponse, DeploySafeResult }

@@ -1,13 +1,12 @@
 import type { Hex } from 'viem'
+import type { ClobOrderSide, RawBook } from './type'
 
-import { baseUrl, requestJson, toNumber } from './client'
-import { type CancelOrderResponse, type ClobCredentials, type OpenOrder, type OrderBook, type PlaceOrderResponse, type SignTypedData } from './types'
+import { baseUrl, requestJson, toNumber } from '../client'
+import { type CancelOrderResponse, type ClobCredentials, type OpenOrder, type OrderBook, type PlaceOrderResponse, type SignTypedData } from '../types'
 
 import { CLOB_AUTH_DOMAIN, CLOB_AUTH_MESSAGE, CLOB_AUTH_TYPES } from '@/constants/polymarket'
 
 const CLOB = () => baseUrl('CLOB')
-
-type ClobOrderSide = 'BUY' | 'SELL'
 
 const decodeBase64 = (value: string): Uint8Array => {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
@@ -39,19 +38,6 @@ async function l2Signature(secret: string, message: string): Promise<string> {
 }
 
 /* ---------------------------------------------------------------- public */
-
-interface RawBook {
-  market?: string
-  asset_id?: string
-  timestamp?: string
-  hash?: string
-  bids?: { price: string; size: string }[]
-  asks?: { price: string; size: string }[]
-  min_order_size?: string
-  tick_size?: string
-  neg_risk?: boolean
-  last_trade_price?: string
-}
 
 /** `GET /book?token_id=` — orderbook + trading constraints. */
 export async function getOrderBook(tokenId: string): Promise<OrderBook> {
@@ -124,27 +110,15 @@ export async function getClobMarketInfo(conditionId: string): Promise<{
  * Signs the `ClobAuth` EIP-712 typed data with the caller-provided signer
  * (the connected wallet), then calls `GET /auth/derive-api-key`.
  */
-export async function deriveClobCredentials(signerAddress: string, signTypedData: SignTypedData): Promise<ClobCredentials> {
-  const timestamp = String(Math.floor(Date.now() / 1000))
+export async function deriveClobCredentials(signerAddress: string, signature: string, timestamp: string): Promise<ClobCredentials> {
   const nonce = '0'
 
-  const signature = await signTypedData({
-    domain: CLOB_AUTH_DOMAIN,
-    types: CLOB_AUTH_TYPES,
-    primaryType: 'ClobAuth',
-    message: {
-      address: signerAddress,
-      timestamp,
-      nonce,
-      message: CLOB_AUTH_MESSAGE,
-    },
-  })
-
-  return requestJson<ClobCredentials>(CLOB(), '/auth/derive-api-key', {
+  return requestJson<ClobCredentials>(CLOB(), '/auth/api-key', {
+    method: 'POST',
     headers: {
       POLY_ADDRESS: signerAddress,
       POLY_SIGNATURE: signature,
-      POLY_TIMESTAMP: timestamp,
+      POLY_TIMESTAMP: `${timestamp}`,
       POLY_NONCE: nonce,
     },
   })

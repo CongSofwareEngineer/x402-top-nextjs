@@ -164,3 +164,27 @@ export const PAGINATION = {
   POSITIONS_PAGE_SIZE: 100,
   MAX_LIMIT: 1000,
 } as const
+
+export const GET_NONCE = '/nonce'
+export const GET_RELAY_PAYLOAD = '/relay-payload'
+export const GET_TRANSACTION = '/transaction'
+export const GET_TRANSACTIONS = '/transactions'
+export const SUBMIT_TRANSACTION = '/submit'
+export const GET_DEPLOYED = '/deployed'
+
+export enum TransactionType {
+  SAFE = 'SAFE',
+  PROXY = 'PROXY',
+  SAFE_CREATE = 'SAFE-CREATE',
+  WALLET = 'WALLET',
+  WALLET_CREATE = 'WALLET-CREATE',
+}
+
+export const SAFE_INIT_CODE_HASH = '0x2bce2127ff07fb632d16c8347c4ebf501f4841168bed00d9e6ef715ddb6fcecf'
+
+export const PROXY_INIT_CODE_HASH = '0xd21df8dc65880a8606f09fe0ce3df9b8869287ab0b058be05aa9e8af6330a00b'
+
+export const SAFE_FACTORY_NAME = 'Polymarket Contract Proxy Factory'
+
+export const DEPOSIT_WALLET_DOMAIN_NAME = 'DepositWallet'
+export const DEPOSIT_WALLET_DOMAIN_VERSION = '1'

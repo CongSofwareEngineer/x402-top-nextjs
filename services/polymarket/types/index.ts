@@ -240,8 +240,8 @@ export interface BridgeAddresses {
 }
 
 export interface BridgeDepositResponse {
-  address: BridgeAddresses
-  note?: string
+  transactionID: string
+  state?: string
 }
 
 export interface SupportedAsset {
@@ -301,8 +301,24 @@ export interface PublicProfile {
   bio?: string
   pseudonym?: string
   name?: string
+  users?: [
+    {
+      id: string
+      creator: boolean
+      mod: boolean
+    },
+  ]
   xUsername?: string
   verifiedBadge?: boolean
+  bridge: {
+    address: {
+      evm: string
+      svm: string
+      btc: string
+      tron: string
+    }
+    note: string
+  }
 }
 
 /** Signature function compatible with wagmi `signTypedDataAsync`. */

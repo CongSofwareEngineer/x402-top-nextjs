@@ -1,7 +1,8 @@
 import type { Address } from 'viem'
+import type { ActivityRow, PositionRow, ProxyApprovalRow, ProxyApprovalsEnvelope } from './type'
 
-import { baseUrl, requestJson, toNumber } from './client'
-import { type ActivityItem, type PaginationEnvelope, type PortfolioValue, type Position, type UserStats } from './types'
+import { baseUrl, requestJson, toNumber } from '../client'
+import { type ActivityItem, type PaginationEnvelope, type PortfolioValue, type Position, type UserStats } from '../types'
 
 /**
  * Data API v2 — read-only wallet & activity feeds.
@@ -14,33 +15,6 @@ export async function getPortfolioValue(user: string): Promise<PortfolioValue | 
   const data = await requestJson<PaginationEnvelope<PortfolioValue | null>>(baseUrl('DATA'), v2(`/value?user=${encodeURIComponent(user)}`))
 
   return data.data ?? null
-}
-
-interface PositionRow {
-  proxy_wallet?: string
-  token_id?: string
-  condition_id?: string
-  title?: string
-  slug?: string
-  icon?: string
-  event_id?: string
-  event_slug?: string
-  outcome?: string
-  outcome_index?: number
-  current_size?: number
-  avg_price?: number
-  entry_cost_usdc?: number
-  current_price?: number
-  current_value?: number
-  total_size?: number
-  realized_pnl?: number
-  unrealized_pnl?: number
-  total_pnl?: number
-  percent_pnl?: number
-  status?: string
-  negative_risk?: boolean
-  end_date?: string
-  last_event_at?: number
 }
 
 function mapPosition(row: PositionRow): Position {
@@ -85,23 +59,12 @@ export async function getPositions(user: string, status: 'OPEN' | 'REDEEMABLE' |
   return (data.data ?? []).map(mapPosition)
 }
 
-interface ActivityRow {
-  proxy_wallet?: string
-  timestamp?: number
-  type?: string
-  size?: number
-  usdc_size?: number
-  transaction_hash?: string
-  price?: number
-  token_id?: string
-  side?: 'BUY' | 'SELL'
-  outcome_index?: number
-  title?: string
-  slug?: string
-  icon?: string
-  event_slug?: string
-  outcome?: string
-  is_combo?: boolean
+export async function getWalletProxyApprovals(proxyWallet: string): Promise<ProxyApprovalRow[]> {
+  const data = await requestJson<ProxyApprovalsEnvelope>(baseUrl('DATA'), v2(encodeURI(`/approvals?user=${proxyWallet}`)))
+
+  const tokens = data.data?.contracts ?? []
+
+  return tokens.filter((token) => !token.approved && token.feature === 'trading')
 }
 
 function mapActivity(row: ActivityRow): ActivityItem {

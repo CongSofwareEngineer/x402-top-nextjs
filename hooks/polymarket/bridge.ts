@@ -1,6 +1,9 @@
 'use client'
 
+import type { Address, Hex } from 'viem'
+
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useAppKitAccount } from '@reown/appkit/react'
 
 import { REACT_QUERY_POLY_MARKET } from '@/constants/reactQuery'
 import {
@@ -15,6 +18,7 @@ import {
   type BridgeStatusResponse,
   type SupportedAsset,
 } from '@/services/polymarket'
+import { sleep } from '@/utils/functions'
 
 /** Assets accepted by the bridge (deposit/withdraw destinations). */
 export function useSupportedAssets() {
@@ -41,9 +45,10 @@ export function useBridgeStatus(address: string | undefined) {
  * to this address to fund their Polymarket account.
  */
 export function useCreateDepositAddress() {
+  const { address } = useAppKitAccount()
+
   return useMutation({
-    mutationFn: (params: { headers: Record<string, string>; body: Record<string, string> }): Promise<BridgeDepositResponse> =>
-      createDepositAddress(params.body, params.headers),
+    mutationFn: async (): Promise<BridgeDepositResponse> => createDepositAddress(address!),
   })
 }
 

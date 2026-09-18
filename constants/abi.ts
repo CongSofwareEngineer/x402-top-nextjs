@@ -385,3 +385,26 @@ export const ABI_DEPOSIT_WALLET_FACTORY = [
     type: 'function',
   },
 ]
+
+export const DEPOSIT_WALLET_TYPES = {
+  Call: [
+    { name: 'target', type: 'address' },
+    { name: 'value', type: 'uint256' },
+    { name: 'data', type: 'bytes' },
+  ],
+  Batch: [
+    { name: 'wallet', type: 'address' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'deadline', type: 'uint256' },
+    { name: 'calls', type: 'Call[]' },
+  ],
+}
+
+export const ABI_CLOB_AUTH_DOMAIN = {
+  ClobAuth: [
+    { name: 'address', type: 'address' },
+    { name: 'timestamp', type: 'string' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'message', type: 'string' },
+  ],
+}

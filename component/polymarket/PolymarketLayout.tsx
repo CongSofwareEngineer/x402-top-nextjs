@@ -17,9 +17,6 @@ export function PolymarketLayout({ children, activeTab, onTabChange }: Polymarke
   const { chainId, switchNetwork } = useAppKitNetwork()
   const { open } = useAppKit()
 
-  const currentChainId = typeof chainId === 'string' ? Number(chainId) : chainId
-  const isCorrectNetwork = currentChainId === base.id || currentChainId === baseSepolia.id
-
   const tabs: { id: TabType; label: string; icon: ReactNode }[] = [
     { id: 'markets', label: 'Markets', icon: '📊' },
     { id: 'trade', label: 'Trade', icon: '💹' },
@@ -75,14 +72,7 @@ export function PolymarketLayout({ children, activeTab, onTabChange }: Polymarke
                       {address.slice(0, 6)}...{address.slice(-4)}
                     </span>
                   )}
-                  {!isCorrectNetwork && (
-                    <button
-                      onClick={handleSwitchNetwork}
-                      className='px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-100 rounded-full dark:bg-amber-900/30 dark:text-amber-300'
-                    >
-                      Wrong Network (Click to switch to Base)
-                    </button>
-                  )}
+
                   <button
                     onClick={() => open({ view: 'Account' })}
                     className='px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600'

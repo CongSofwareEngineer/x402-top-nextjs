@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useAppKitAccount } from '@reown/appkit/react'
+import { polygon } from 'viem/chains'
 
 import { REACT_QUERY_POLY_MARKET } from '@/constants/reactQuery'
 import {
@@ -17,13 +18,20 @@ import {
   type PublicProfile,
   type UserStats,
 } from '@/services/polymarket'
+import RelayWeb3 from '@/web3/relay'
 
 export function usePolyMarketIsDeploy() {
   const { address, isConnected } = useAppKitAccount()
 
   return useQuery({
     queryKey: [REACT_QUERY_POLY_MARKET.IS_DEPLOY, address?.toLowerCase()],
-    queryFn: (): Promise<boolean> => getIsDeploy(address!),
+    queryFn: async (): Promise<boolean> => {
+      const relayWeb3 = new RelayWeb3(polygon.id)
+      const proxyAddress = await relayWeb3.deriveDepositWalletAddress(address!)
+      const res = await getIsDeploy(proxyAddress)
+
+      return res
+    },
     enabled: !!address && isConnected,
   })
 }
@@ -35,7 +43,20 @@ export function usePolyMarketProfile() {
 
   return useQuery({
     queryKey: [REACT_QUERY_POLY_MARKET.PROFILE, address?.toLowerCase()],
-    queryFn: (): Promise<PublicProfile | null> => getProfileByAddress(address!),
+    queryFn: async (): Promise<PublicProfile | null> => {
+      const relayWeb3 = new RelayWeb3(polygon.id)
+      const proxyAddress = await relayWeb3.deriveDepositWalletAddress(address!)
+
+      console.log({ proxyAddress })
+
+      const res = await getProfileByAddress(proxyAddress!)
+
+      if (res && !res.proxyWallet) {
+        res.proxyWallet = proxyAddress!
+      }
+
+      return res
+    },
     enabled: !!address && isDeploy && isConnected,
     staleTime: 600_000,
     retry: false,

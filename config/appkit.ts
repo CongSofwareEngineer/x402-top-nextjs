@@ -10,8 +10,8 @@ if (!projectId) {
   throw new Error('Project ID is not defined')
 }
 
-export const DEFAULT_NETWORK = base
-export const CHAIN_SUPPORT = [DEFAULT_NETWORK, bsc, polygon, optimism]
+export const DEFAULT_NETWORK = polygon
+export const CHAIN_SUPPORT = [DEFAULT_NETWORK, bsc, base, optimism]
 
 //Set up the Wagmi Adapter (Config)
 export const wagmiAdapter = new WagmiAdapter({

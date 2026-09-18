@@ -9,7 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@polymarket/builder-relayer-client": "^0.0.10",
+    "@polymarket/builder-signing-sdk": "^1.0.0",
     "@polymarket/client": "^0.10.0",
+    "@polymarket/clob-client": "^5.8.1",
     "@reown/appkit": "^1.8.23",
     "@reown/appkit-adapter-wagmi": "^1.8.23",
     "@tanstack/react-query": "^5.102.8",

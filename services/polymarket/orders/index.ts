@@ -1,5 +1,6 @@
 import type { Address, Hex } from 'viem'
-import type { OrderDraft, OrderSide, SignTypedData } from './types'
+import type { OrderDraft, SignTypedData } from '../types'
+import type { ExchangeOrder, SignedOrderPayload } from './type'
 
 import {
   EXCHANGE_ADDRESS,
@@ -13,27 +14,6 @@ import {
   TOKEN_DECIMALS,
   ZERO_BYTES32,
 } from '@/constants/polymarket'
-
-export interface ExchangeOrder {
-  salt: number
-  maker: string
-  signer: string
-  tokenId: string
-  makerAmount: string
-  takerAmount: string
-  side: OrderSide
-  signature: Hex
-  signatureType: typeof SIGNATURE_TYPE.EOA
-  expiration: string
-  timestamp: string
-  metadata: string
-  builder: string
-}
-
-export interface SignedOrderPayload {
-  order: ExchangeOrder
-  orderType: OrderDraft['orderType']
-}
 
 export function isNegativeRisk(market: { negRisk?: boolean }): boolean {
   return !!market.negRisk
