@@ -29,3 +29,19 @@ export interface GammaMarketRow {
   categories?: GammaCategory[] | null
   events?: GammaEvent[] | null
 }
+
+export type Challenge = {
+  nonce: string
+  message: string
+  fields: {
+    address: string
+    chainId: number
+    domain: string
+    expirationTime: string
+    issuedAt: string
+    nonce: string
+    statement: string
+    uri: string
+    version: string
+  }
+}

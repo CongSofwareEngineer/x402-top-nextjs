@@ -54,6 +54,11 @@ export function usePolyMarketProfile() {
       if (res && !res.proxyWallet) {
         res.proxyWallet = proxyAddress!
       }
+      if (!res) {
+        return {
+          proxyWallet: proxyAddress!,
+        } as PublicProfile
+      }
 
       return res
     },

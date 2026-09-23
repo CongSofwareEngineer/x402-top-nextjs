@@ -1,7 +1,8 @@
+import type { Challenge, GammaMarketRow } from './type'
+
 import { builderHeader } from '../bridge'
 import { PolymarketApiError, baseUrl, parseJsonArray, requestJson, toNumber } from '../client'
 import { type GammaTag, type Market, type MarketFilters, type MarketsResult, type PublicProfile } from '../types'
-import type { GammaMarketRow } from './type'
 
 import { KEY_POLY_MARKET } from '@/config/polymarket'
 
@@ -116,8 +117,7 @@ export async function getProfileByAddress(address: string): Promise<PublicProfil
 
     return { ...profile, bridge } as PublicProfile
   } catch (error) {
-    if (error instanceof PolymarketApiError && error.status === 404) return null
-    throw error
+    return null
   }
 }
 
@@ -152,6 +152,28 @@ export async function getReferralCodes(code: string) {
     method: 'POST',
     body: body,
   })
+
+  return data
+}
+
+export async function getChallenge(address: string) {
+  const body = JSON.stringify({ siwe: { address: address } })
+  const res = await fetch('/api/polymarket/challenge', {
+    method: 'POST',
+    body,
+  })
+  const data = await res.json()
+
+  return data as Challenge
+}
+
+export async function login(signature: string, siweData: Record<string, any>) {
+  const body = JSON.stringify({ signature, siweData })
+  const res = await fetch('/api/polymarket/login', {
+    method: 'POST',
+    body,
+  })
+  const data = await res.json()
 
   return data
 }

@@ -6,6 +6,7 @@ import { useConnectorClient, useSendTransaction, useSignMessage, useSignTypedDat
 import { keccak256, encodeAbiParameters, parseAbiParameters, getAddress, encodePacked, Hex, concat, createWalletClient, http, custom } from 'viem'
 import { polygon } from 'viem/chains'
 import { RelayClient } from '@polymarket/builder-relayer-client'
+import { SiweMessage } from 'siwe'
 
 import {
   useBridgeStatus,
@@ -30,6 +31,8 @@ import { buildDepositWalletBatchRequest, generateSignTypeDatApproveToken } from 
 import { approveAllToken, getNonce } from '@/services/polymarket/relayer'
 import { sleep } from '@/utils/functions'
 import { getClobAuthTypedData } from '@/utils/clob'
+import { getChallenge, login } from '@/services/polymarket/gamma'
+
 interface GetProxyWalletParams {
   factoryAddress: Hex // Địa chỉ Proxy Factory Contract
   byteCodeHash: Hex // Hash bytecode của Proxy contract: keccak256(Proxy_Bytecode)
@@ -62,8 +65,8 @@ export function ProfileTab() {
   const positionsValue = positions.reduce((sum, p) => sum + p.currentValue, 0)
 
   useEffect(() => {
-    console.log({ profile })
-  }, [profile])
+    console.log({ profile, isDeploy })
+  }, [profile, isDeploy])
 
   if (!isConnected) {
     return (
@@ -91,19 +94,38 @@ export function ProfileTab() {
 
   const deployAccount = async () => {
     try {
+      const challenge = await getChallenge(address!)
+
+      const siweObject = new SiweMessage(challenge.fields)
+      const textToSign = siweObject.prepareMessage()
+
+      const signatureSignMessage = await signMessage({
+        message: textToSign,
+      })
+
+      await login(signatureSignMessage, siweObject)
+
       // await createDepositAddress(address!)
       // await sleep(2000)
       const proxyWallet = profile?.proxyWallet!
       const { nonce = '0' } = await getNonce(address!)
       // const clobAuthTypedData = getClobAuthTypedData(address!, nonce)
 
-      // console.log({ clobAuthTypedData })
+      // // console.log({ clobAuthTypedData })
 
       // const signatureClobAuth = await signTypedData(clobAuthTypedData as any)
 
       // const clobCredentials = await deriveClobCredentials(address!, signatureClobAuth, clobAuthTypedData.message.timestamp.toString())
 
       // console.log({ clobCredentials })
+
+      // const clobCredentials = {
+      //   apiKey: '681d2135-4fc6-71a8-309e-f35952082553',
+      //   secret: 'w7CQQvBt_tDdFQ5fyjUwUHxOyogHOITmoVzI2sG_jFU=',
+      //   passphrase: '98f404b3fa1b4961283e75180c9dd300d59cad605a69f17f7947b8865f5e62f2',
+      // }
+
+      // // console.log({ clobCredentials })
 
       // Deadline: 4 minutes from now
       const nowInSeconds = Math.floor(Date.now() / 1000)

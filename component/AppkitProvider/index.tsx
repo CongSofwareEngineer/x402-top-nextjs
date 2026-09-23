@@ -2,11 +2,10 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createAppKit } from '@reown/appkit/react'
-import React, { type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
-import { base } from 'viem/chains'
 
-import { CHAIN_APP, CHAIN_SUPPORT, DEFAULT_NETWORK, projectId, wagmiAdapter } from '@/config/appkit'
+import { CHAIN_SUPPORT, DEFAULT_NETWORK, projectId, wagmiAdapter } from '@/config/appkit'
 
 // Set up queryClient
 const queryClient = new QueryClient()
