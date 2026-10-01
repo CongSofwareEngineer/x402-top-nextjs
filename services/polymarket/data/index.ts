@@ -32,6 +32,7 @@ function mapPosition(row: PositionRow): Position {
     currentSize: toNumber(row.current_size),
     avgPrice: toNumber(row.avg_price),
     entryCostUsdc: toNumber(row.entry_cost_usdc),
+    totalCostUsdc: toNumber(row.total_cost_usdc ?? row.entry_cost_usdc),
     currentPrice: toNumber(row.current_price),
     currentValue: toNumber(row.current_value),
     totalSize: toNumber(row.total_size),
@@ -40,7 +41,10 @@ function mapPosition(row: PositionRow): Position {
     totalPnl: toNumber(row.total_pnl),
     percentPnl: toNumber(row.percent_pnl),
     status: row.status,
+    redeemable: !!row.redeemable,
+    mergeable: !!row.mergeable,
     negativeRisk: row.negative_risk,
+    oppositeOutcome: row.opposite_outcome,
     endDate: row.end_date,
     lastEventAt: row.last_event_at,
   }
@@ -125,6 +129,9 @@ export async function getUserStats(user: string): Promise<UserStats | null> {
       ? {
           ...pnl,
           realizedPnl: toNumber(pnl.realized_pnl),
+          unrealizedPnl: toNumber(pnl.unrealized_pnl),
+          // Economic PnL = positions PnL + rebates/rewards — what polymarket.com shows as Profit/Loss.
+          economicPnl: toNumber(pnl.economic_pnl ?? toNumber(pnl.realized_pnl) + toNumber(pnl.unrealized_pnl)),
           volumeUsdc: toNumber(pnl.volume_usdc),
           tradeCount: toNumber(pnl.trade_count),
           deposits: toNumber(pnl.deposits),

@@ -2,8 +2,12 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useAppKitAccount } from '@reown/appkit/react'
+import { erc20Abi, formatUnits, type Address } from 'viem'
 import { polygon } from 'viem/chains'
+import { useConfig } from 'wagmi'
+import { readContract } from '@wagmi/core'
 
+import { PUSD_ADDRESS, TOKEN_DECIMALS } from '@/constants/polymarket'
 import { REACT_QUERY_POLY_MARKET } from '@/constants/reactQuery'
 import {
   getActivity,
@@ -95,6 +99,45 @@ export function usePolyMarketPositions() {
   return useQuery({
     queryKey: [REACT_QUERY_POLY_MARKET.POSITIONS, depositWallet],
     queryFn: (): Promise<Position[]> => getPositions(depositWallet!, 'OPEN'),
+    enabled: !!depositWallet,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  })
+}
+
+/** Resolved positions that were redeemed or fully sold (`/v2/positions?status=CLOSED`). */
+export function usePolyMarketClosedPositions() {
+  const { data: depositWallet } = usePolyMarketWalletAddress()
+
+  return useQuery({
+    queryKey: [REACT_QUERY_POLY_MARKET.CLOSED_POSITIONS, depositWallet],
+    queryFn: (): Promise<Position[]> => getPositions(depositWallet!, 'CLOSED'),
+    enabled: !!depositWallet,
+    staleTime: 60_000,
+  })
+}
+
+/**
+ * Cash available to trade: pUSD held by the account wallet on Polygon.
+ * (`/v2/value` only covers open positions, not cash.)
+ */
+export function usePolyMarketCashBalance() {
+  const config = useConfig()
+  const { data: depositWallet } = usePolyMarketWalletAddress()
+
+  return useQuery({
+    queryKey: [REACT_QUERY_POLY_MARKET.CASH_BALANCE, depositWallet],
+    queryFn: async (): Promise<number> => {
+      const balance = await readContract(config, {
+        chainId: polygon.id,
+        address: PUSD_ADDRESS,
+        abi: erc20Abi,
+        functionName: 'balanceOf',
+        args: [depositWallet as Address],
+      })
+
+      return Number(formatUnits(balance, TOKEN_DECIMALS))
+    },
     enabled: !!depositWallet,
     staleTime: 30_000,
     refetchInterval: 60_000,

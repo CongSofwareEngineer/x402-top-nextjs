@@ -7,6 +7,8 @@ export enum REACT_QUERY {
 export enum REACT_QUERY_POLY_MARKET {
   PORTFOLIO_VALUE = 'polymarket_portfolio_value',
   POSITIONS = 'polymarket_positions',
+  CLOSED_POSITIONS = 'polymarket_closed_positions',
+  CASH_BALANCE = 'polymarket_cash_balance',
   ACTIVITY = 'polymarket_activity',
   TRADE_HISTORY = 'polymarket_trade_history',
   USER_STATS = 'polymarket_user_stats',

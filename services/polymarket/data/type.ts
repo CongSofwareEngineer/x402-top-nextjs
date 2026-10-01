@@ -13,6 +13,8 @@ export interface PositionRow {
   current_size?: number
   avg_price?: number
   entry_cost_usdc?: number
+  entry_fees_usdc?: number
+  total_cost_usdc?: number
   current_price?: number
   current_value?: number
   total_size?: number
@@ -21,7 +23,10 @@ export interface PositionRow {
   total_pnl?: number
   percent_pnl?: number
   status?: string
+  redeemable?: boolean
+  mergeable?: boolean
   negative_risk?: boolean
+  opposite_outcome?: string
   end_date?: string
   last_event_at?: number
 }
@@ -77,6 +82,7 @@ export interface UserStatsRow {
   all_time_pnl?: {
     realized_pnl?: number
     unrealized_pnl?: number
+    economic_pnl?: number
     volume_usdc?: number
     trade_count?: number
     deposits?: number | null

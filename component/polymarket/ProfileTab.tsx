@@ -3,27 +3,33 @@
 import { useState } from 'react'
 import { useAppKitAccount } from '@reown/appkit/react'
 
+import { DepositCard } from './DepositCard'
+import { PositionsPanel } from './PositionsPanel'
+
 import {
   ONBOARDING_STEP,
   useBridgeStatus,
   useCreateWithdrawalAddress,
+  usePolyMarketCashBalance,
   usePolyMarketPortfolio,
   usePolyMarketPositions,
   usePolyMarketProfile,
+  usePolyMarketUserStats,
   usePolymarketOnboarding,
   useSupportedAssets,
   type OnboardingStep,
 } from '@/hooks/polymarket'
 import { useWalletBalance } from '@/hooks/useWalletBalance'
-
-import { DepositCard } from './DepositCard'
+import { EXPLORERS } from '@/constants/polymarket'
 
 export function ProfileTab() {
   const { address, isConnected } = useAppKitAccount()
   const { data: portfolio, isLoading: portfolioLoading } = usePolyMarketPortfolio()
   const { data: positions = [], isLoading: positionsLoading } = usePolyMarketPositions()
   const { data: profile } = usePolyMarketProfile()
-  const { data: walletBalance, refetch: refetchWalletBalance } = useWalletBalance()
+  const { data: cash, isLoading: cashLoading } = usePolyMarketCashBalance()
+  const { data: stats } = usePolyMarketUserStats()
+  const walletBalance = useWalletBalance()
   const depositAddress = profile?.bridge?.address?.evm
   // `/status/{address}` takes the bridge address that received funds, not the wallet.
   const { data: bridge = { transactions: [] } } = useBridgeStatus(depositAddress)
@@ -34,8 +40,17 @@ export function ProfileTab() {
   const [withdrawChainId, setWithdrawChainId] = useState('8453')
 
   const withdrawalAddress = profile?.bridge?.address?.evm
-  const portfolioValue = portfolio?.value ?? 0
-  const positionsValue = positions.reduce((sum, p) => sum + p.currentValue, 0)
+  // `/v2/value` = open positions only; polymarket.com's Portfolio = positions + cash.
+  const positionsValue = portfolio?.value ?? positions.reduce((sum, p) => sum + p.currentValue, 0)
+  const portfolioValue = positionsValue + (cash ?? 0)
+  const activeCount = positions.filter((p) => !p.redeemable).length
+  const pnl = stats?.allTimePnl?.economicPnl ?? 0
+  const volume = stats?.allTimePnl?.volumeUsdc ?? 0
+  const displayName =
+    profile?.name ||
+    profile?.pseudonym ||
+    (onboarding.wallet ? `${onboarding.wallet.slice(0, 6)}...${onboarding.wallet.slice(-4)}` : 'Unnamed profile')
+  const joinedAt = stats?.joinDate ? new Date(stats.joinDate * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : null
 
   if (!isConnected) {
     return (
@@ -103,12 +118,12 @@ export function ProfileTab() {
               />
             ) : (
               <div className='w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0'>
-                <span className='text-lg font-semibold text-gray-400'>{(profile.name ?? profile.pseudonym ?? '?').slice(0, 1)}</span>
+                <span className='text-lg font-semibold text-gray-400'>{(profile.name || profile.pseudonym || '?').slice(0, 1)}</span>
               </div>
             )}
             <div className='min-w-0'>
               <div className='flex items-center gap-2 flex-wrap'>
-                <h3 className='text-lg font-bold text-gray-900 dark:text-white truncate'>{profile.name ?? profile.pseudonym ?? 'Unnamed profile'}</h3>
+                <h3 className='text-lg font-bold text-gray-900 dark:text-white truncate'>{displayName}</h3>
                 {profile.verifiedBadge && (
                   <span className='text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded-full px-2 py-0.5'>
                     Verified
@@ -124,37 +139,68 @@ export function ProfileTab() {
                 </p>
               )}
               {profile.bio && <p className='text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2'>{profile.bio}</p>}
+              <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
+                {joinedAt && <>Joined {joinedAt} · </>}
+                {formatNumber(stats?.trades ?? 0)} trades
+                {onboarding.wallet && (
+                  <>
+                    {' · '}
+                    <a
+                      href={`${EXPLORERS.POLYGON}/address/${onboarding.wallet}`}
+                      target='_blank'
+                      rel='noreferrer'
+                      className='font-mono text-blue-600 dark:text-blue-400 hover:underline'
+                    >
+                      {onboarding.wallet.slice(0, 6)}...{onboarding.wallet.slice(-4)}
+                    </a>
+                  </>
+                )}
+              </p>
             </div>
           </div>
         </div>
       )}
 
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+      <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6'>
         <BalanceCard
-          title='Polymarket Balance'
+          title='Portfolio'
           value={formatCurrency(portfolioValue)}
-          subtitle='pUSD value'
+          subtitle={`${formatCurrency(positionsValue)} in ${activeCount} active ${activeCount === 1 ? 'position' : 'positions'}`}
+          icon={<ChartIcon className='w-6 h-6' />}
+          color='purple'
+        />
+        <BalanceCard
+          title='Cash'
+          value={cashLoading ? 'Loading...' : formatCurrency(cash ?? 0)}
+          subtitle='pUSD on Polygon · available to trade'
           icon={<WalletIcon className='w-6 h-6' />}
           color='blue'
         />
         <BalanceCard
           title='Wallet Balance'
-          value={walletBalance !== null && walletBalance !== undefined ? formatCurrency(walletBalance) : 'Loading...'}
-          subtitle='USDC on Base'
+          value={walletBalanceLabel(walletBalance)}
+          subtitle={
+            walletBalance.isSupported
+              ? `${walletBalance.token!.symbol} on ${walletBalance.chain!.name}`
+              : `No USDC on ${walletBalance.chain?.name ?? 'this network'}`
+          }
           icon={<WalletIcon className='w-6 h-6' />}
           color='green'
           action={
-            <button onClick={() => refetchWalletBalance()} className='text-xs text-blue-600 dark:text-blue-400 hover:underline'>
-              Refresh
-            </button>
+            walletBalance.isSupported && (
+              <button onClick={() => walletBalance.refetch()} className='text-xs text-blue-600 dark:text-blue-400 hover:underline'>
+                Refresh
+              </button>
+            )
           }
         />
         <BalanceCard
-          title='Open Positions'
-          value={formatNumber(positions.length)}
-          subtitle={formatCurrency(positionsValue)}
+          title='Profit/Loss'
+          value={`${pnl >= 0 ? '+' : '-'}${formatCurrency(Math.abs(pnl))}`}
+          valueClassName={pnl > 0 ? 'text-green-600 dark:text-green-400' : pnl < 0 ? 'text-red-600 dark:text-red-400' : undefined}
+          subtitle={`All-time · ${formatCurrency(volume)} volume`}
           icon={<ChartIcon className='w-6 h-6' />}
-          color='purple'
+          color='green'
         />
       </div>
 
@@ -255,58 +301,7 @@ export function ProfileTab() {
         </div>
       )}
 
-      {!positionsLoading && positions.length > 0 && (
-        <div className='bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden'>
-          <div className='p-6 border-b border-gray-200 dark:border-gray-700'>
-            <h3 className='text-lg font-semibold text-gray-900 dark:text-white'>Open Positions</h3>
-          </div>
-          <div className='overflow-x-auto'>
-            <table className='w-full'>
-              <thead className='bg-gray-50 dark:bg-gray-800/50'>
-                <tr>
-                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Market</th>
-                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Outcome</th>
-                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Shares</th>
-                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Avg Price</th>
-                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Value</th>
-                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>P&L</th>
-                </tr>
-              </thead>
-              <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
-                {positions.map((position, i) => (
-                  <tr key={`${position.tokenId}-${i}`} className='hover:bg-gray-50 dark:hover:bg-gray-800/50'>
-                    <td className='px-6 py-4'>
-                      <div className='text-sm font-medium text-gray-900 dark:text-white truncate max-w-xs'>{position.title}</div>
-                    </td>
-                    <td className='px-6 py-4'>
-                      <span
-                        className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                          position.outcome === 'Yes'
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                        }`}
-                      >
-                        {position.outcome}
-                      </span>
-                    </td>
-                    <td className='px-6 py-4 text-sm text-gray-900 dark:text-white'>{formatNumber(position.currentSize)}</td>
-                    <td className='px-6 py-4 text-sm text-gray-900 dark:text-white'>${position.avgPrice.toFixed(4)}</td>
-                    <td className='px-6 py-4 text-sm text-gray-900 dark:text-white'>{formatCurrency(position.currentValue)}</td>
-                    <td className='px-6 py-4'>
-                      <span
-                        className={`text-sm font-medium ${position.totalPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                      >
-                        {position.totalPnl >= 0 ? '+' : ''}
-                        {formatCurrency(position.totalPnl)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {onboarding.status.isDeployed && <PositionsPanel canTrade={onboarding.currentStep === ONBOARDING_STEP.DONE} />}
     </div>
   )
 }
@@ -434,15 +429,25 @@ function formatNumber(num: number) {
 
 const formatCurrency = (num: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(num)
 
+function walletBalanceLabel({ isSupported, isLoading, isError, balance }: ReturnType<typeof useWalletBalance>) {
+  if (!isSupported) return '—'
+  if (isError) return 'Unavailable'
+  if (isLoading || balance === undefined) return 'Loading...'
+
+  return formatCurrency(balance)
+}
+
 function BalanceCard({
   title,
   value,
+  valueClassName = 'text-gray-900 dark:text-white',
   subtitle,
   icon,
   action,
 }: {
   title: string
   value: string
+  valueClassName?: string
   subtitle: string
   icon: React.ReactNode
   color: 'blue' | 'green' | 'purple'
@@ -459,7 +464,7 @@ function BalanceCard({
       <div className='flex items-center justify-between'>
         <div>
           <p className='text-sm text-gray-500 dark:text-gray-400'>{title}</p>
-          <p className='text-2xl font-bold text-gray-900 dark:text-white mt-1'>{value}</p>
+          <p className={`text-2xl font-bold mt-1 ${valueClassName}`}>{value}</p>
           <p className='text-sm text-gray-500 dark:text-gray-400'>{subtitle}</p>
         </div>
         <div className={`p-3 rounded-xl `}>{icon}</div>

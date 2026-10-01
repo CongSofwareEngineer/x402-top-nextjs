@@ -11,7 +11,7 @@ import { usePolyMarketWalletAddress } from './account'
 
 import { STORAGE_KEYS } from '@/constants/polymarket'
 import { ClobSession, type ClobCredentials } from '@/services/polymarket'
-import { connectSecureClient, toClobCredentials } from '@/services/polymarket/secure'
+import { connectSecureClient, toClobCredentials, type PolymarketSecureClient } from '@/services/polymarket/secure'
 
 const storageKey = (address: string) => `${STORAGE_KEYS.CLOB_CREDENTIALS}:${address.toLowerCase()}`
 const loginKey = (address: string) => `${STORAGE_KEYS.LOGIN}:${address.toLowerCase()}`
@@ -133,4 +133,43 @@ export function useClobSession(): ClobSessionResult {
   const session = useMemo(() => (credentials && address ? new ClobSession(credentials, address as Address) : null), [credentials, address])
 
   return { session, isAuthenticated: !!session, isLoading, error, authenticate, address }
+}
+
+/** One SecureClient per signer + account wallet, shared by every component. */
+const secureClients = new Map<string, Promise<PolymarketSecureClient>>()
+
+/**
+ * Lazily connect the `@polymarket/client` SecureClient acting on the account
+ * wallet (Deposit Wallet / Safe) — needed for anything that moves funds held
+ * there (market sells, redeems). Reuses the cached CLOB credentials from
+ * onboarding, so normally no extra signature is asked for.
+ */
+export function usePolymarketSecureClient() {
+  const { address } = useAppKitAccount()
+  const { data: walletClient } = useWalletClient()
+  const { data: wallet } = usePolyMarketWalletAddress()
+  const ensurePolygon = useEnsurePolygon()
+
+  return useCallback(async (): Promise<PolymarketSecureClient> => {
+    if (!address || !walletClient) throw new Error('Wallet not connected')
+    if (!wallet) throw new Error('Polymarket wallet not resolved yet')
+
+    await ensurePolygon()
+
+    const key = `${address}:${wallet}`.toLowerCase()
+    const cached = secureClients.get(key)
+
+    if (cached) return cached
+
+    const pending = connectSecureClient({ walletClient, wallet, credentials: loadCredentials(address) }).then((client) => {
+      saveCredentials(address, toClobCredentials(client))
+
+      return client
+    })
+
+    secureClients.set(key, pending)
+    pending.catch(() => secureClients.delete(key))
+
+    return pending
+  }, [address, walletClient, wallet, ensurePolygon])
 }

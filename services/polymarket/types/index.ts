@@ -133,6 +133,8 @@ export interface Position {
   currentSize: number
   avgPrice: number
   entryCostUsdc: number
+  /** Entry cost including fees. */
+  totalCostUsdc: number
   currentPrice: number
   currentValue: number
   totalSize: number
@@ -140,8 +142,13 @@ export interface Position {
   unrealizedPnl: number
   totalPnl: number
   percentPnl: number
+  /** `OPEN` (still trading), `REDEEMABLE` (market resolved, not yet redeemed) or `CLOSED`. */
   status?: string
+  /** Market resolved — the position can be redeemed (worth `currentValue`, 0 for a losing outcome). */
+  redeemable: boolean
+  mergeable: boolean
   negativeRisk?: boolean
+  oppositeOutcome?: string
   endDate?: string
   lastEventAt?: number
 }
@@ -175,6 +182,8 @@ export interface UserStats {
   joinDate?: number | null
   allTimePnl?: {
     realizedPnl?: number
+    unrealizedPnl?: number
+    economicPnl?: number
     volumeUsdc?: number
     tradeCount?: number
     deposits?: number

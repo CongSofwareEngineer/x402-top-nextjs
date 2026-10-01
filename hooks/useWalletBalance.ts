@@ -1,39 +1,39 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { useAppKitAccount } from '@reown/appkit/react'
-import { useAccount } from 'wagmi'
-import { base, baseSepolia } from 'viem/chains'
-import { createPublicClient, http, erc20Abi } from 'viem'
+import { erc20Abi, formatUnits, type Address } from 'viem'
+import { useConnection, useReadContract } from 'wagmi'
 
-import { USDC_BASE_ADDRESS, TOKEN_DECIMALS } from '@/constants/polymarket'
+import { USDC_BY_CHAIN } from '@/constants/token'
 
+/**
+ * USDC balance of the connected wallet on the chain it is connected to.
+ * `token` is undefined when that chain has no known USDC (or is not configured).
+ */
 export function useWalletBalance() {
-  const { address } = useAppKitAccount()
-  const { chain } = useAccount()
+  const { address, chain, chainId } = useConnection()
+  const token = chainId ? USDC_BY_CHAIN[chainId] : undefined
 
-  return useQuery({
-    queryKey: ['wallet_balance', address, chain?.id],
-    queryFn: async () => {
-      if (!address) return null
-
-      const currentChain = chain?.id === base.id ? base : baseSepolia
-      const publicClient = createPublicClient({
-        chain: currentChain,
-        transport: http(),
-      })
-
-      const balance = await publicClient.readContract({
-        address: USDC_BASE_ADDRESS,
-        abi: erc20Abi,
-        functionName: 'balanceOf',
-        args: [address as `0x${string}`],
-      })
-
-      return Number(balance) / 10 ** TOKEN_DECIMALS
+  const query = useReadContract({
+    chainId,
+    address: token?.address,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [address as Address],
+    query: {
+      // `chain` is undefined for networks missing from the wagmi config (no RPC transport).
+      enabled: !!address && !!token && !!chain,
+      staleTime: 30_000,
+      refetchInterval: 60_000,
     },
-    enabled: !!address,
-    staleTime: 30000,
-    refetchInterval: 60000,
   })
+
+  return {
+    balance: query.data !== undefined && token ? Number(formatUnits(query.data, token.decimals)) : undefined,
+    token,
+    chain,
+    isSupported: !!token && !!chain,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
+  }
 }
