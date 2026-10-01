@@ -4,14 +4,19 @@ import type { Address } from 'viem'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAppKitAccount } from '@reown/appkit/react'
-import { useSignTypedData } from 'wagmi'
+import { useChainId, useSwitchChain, useWalletClient } from 'wagmi'
+import { polygon } from 'viem/chains'
+
+import { usePolyMarketWalletAddress } from './account'
 
 import { STORAGE_KEYS } from '@/constants/polymarket'
-import { ClobSession, deriveClobCredentials, type ClobCredentials, type SignTypedData } from '@/services/polymarket'
+import { ClobSession, type ClobCredentials } from '@/services/polymarket'
+import { connectSecureClient, toClobCredentials } from '@/services/polymarket/secure'
 
 const storageKey = (address: string) => `${STORAGE_KEYS.CLOB_CREDENTIALS}:${address.toLowerCase()}`
+const loginKey = (address: string) => `${STORAGE_KEYS.LOGIN}:${address.toLowerCase()}`
 
-function loadCredentials(address: string | undefined): ClobCredentials | null {
+export function loadCredentials(address: string | undefined): ClobCredentials | null {
   if (!address || typeof window === 'undefined') return null
   try {
     const raw = window.localStorage.getItem(storageKey(address))
@@ -25,6 +30,46 @@ function loadCredentials(address: string | undefined): ClobCredentials | null {
   } catch {
     return null
   }
+}
+
+export function saveCredentials(address: string, credentials: ClobCredentials) {
+  try {
+    window.localStorage.setItem(storageKey(address), JSON.stringify(credentials))
+  } catch {
+    // storage unavailable (private mode) — credentials stay in memory only
+  }
+}
+
+export function loadLoginFlag(address: string | undefined): boolean {
+  if (!address || typeof window === 'undefined') return false
+  try {
+    return window.localStorage.getItem(loginKey(address)) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function saveLoginFlag(address: string) {
+  try {
+    window.localStorage.setItem(loginKey(address), '1')
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * EIP-712 domains for ClobAuth / Deposit Wallet batches use chainId 137 and
+ * most wallets refuse to sign them while connected to another chain.
+ */
+export function useEnsurePolygon() {
+  const chainId = useChainId()
+  const { switchChainAsync } = useSwitchChain()
+
+  return useCallback(async () => {
+    if (chainId !== polygon.id) {
+      await switchChainAsync({ chainId: polygon.id })
+    }
+  }, [chainId, switchChainAsync])
 }
 
 export interface ClobSessionResult {
@@ -44,7 +89,9 @@ export interface ClobSessionResult {
  */
 export function useClobSession(): ClobSessionResult {
   const { address, isConnected } = useAppKitAccount()
-  const { signTypedDataAsync } = useSignTypedData()
+  const { data: walletClient } = useWalletClient()
+  const { data: wallet } = usePolyMarketWalletAddress()
+  const ensurePolygon = useEnsurePolygon()
 
   const [credentials, setCredentials] = useState<ClobCredentials | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -60,13 +107,16 @@ export function useClobSession(): ClobSessionResult {
   }, [address, isConnected])
 
   const authenticate = useCallback(async (): Promise<ClobCredentials> => {
-    if (!address) throw new Error('Wallet not connected')
+    if (!address || !walletClient) throw new Error('Wallet not connected')
+    if (!wallet) throw new Error('Polymarket wallet not resolved yet')
     setIsLoading(true)
     setError(null)
     try {
-      const creds = await deriveClobCredentials(address, signTypedDataAsync as SignTypedData)
+      await ensurePolygon()
+      const client = await connectSecureClient({ walletClient, wallet: wallet })
+      const creds = toClobCredentials(client)
 
-      window.localStorage.setItem(storageKey(address), JSON.stringify(creds))
+      saveCredentials(address, creds)
       setCredentials(creds)
 
       return creds
@@ -78,7 +128,7 @@ export function useClobSession(): ClobSessionResult {
     } finally {
       setIsLoading(false)
     }
-  }, [address, signTypedDataAsync])
+  }, [address, walletClient, wallet, ensurePolygon])
 
   const session = useMemo(() => (credentials && address ? new ClobSession(credentials, address as Address) : null), [credentials, address])
 

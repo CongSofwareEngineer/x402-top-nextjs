@@ -1,10 +1,20 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 
 import { REACT_QUERY } from '@/constants/reactQuery'
 import { REACT_QUERY_POLY_MARKET } from '@/constants/reactQuery'
-import { getMarketPrice, getMidpoint, getOrderBook, listMarkets, listTags, type MarketFilters } from '@/services/polymarket'
+import {
+  getEventBySlug,
+  getMarketPrice,
+  getMidpoint,
+  getOrderBook,
+  listEvents,
+  listMarkets,
+  listTags,
+  type MarketFilters,
+  type PolyEvent,
+} from '@/services/polymarket'
 
 export interface Category {
   id: string
@@ -51,6 +61,30 @@ export function usePolyMarketMarkets(filters: MarketFilters) {
     queryFn: () => listMarkets(filters),
     staleTime: 30_000,
     refetchInterval: 60_000,
+  })
+}
+
+/** Homepage event feed (Gamma `/events/keyset`), appended page by page. */
+export function usePolyMarketEvents(filters: Omit<MarketFilters, 'cursor'>) {
+  return useInfiniteQuery({
+    queryKey: [REACT_QUERY_POLY_MARKET.EVENTS, filters],
+    queryFn: ({ pageParam }) => listEvents({ ...filters, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  })
+}
+
+/** Single event by slug, kept fresh while trading. */
+export function usePolyMarketEvent(slug: string | undefined, initialData?: PolyEvent) {
+  return useQuery({
+    queryKey: [REACT_QUERY_POLY_MARKET.EVENT, slug],
+    queryFn: () => getEventBySlug(slug!),
+    enabled: !!slug,
+    initialData,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
   })
 }
 

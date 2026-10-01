@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server'
 
 import { NextResponse } from 'next/server'
 
-import { deploySafe } from '@/services/polymarket/relayer'
+import { deployDepositWallet } from '@/services/polymarket/relayer'
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null)
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await deploySafe(address)
+    const result = await deployDepositWallet(address)
 
     return NextResponse.json({
       success: true,

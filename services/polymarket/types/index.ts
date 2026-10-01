@@ -63,6 +63,14 @@ export interface Market {
   events?: GammaEvent[]
   eventId?: string
   eventSlug?: string
+  /** Short label inside a multi-market event, e.g. "December 31". */
+  groupItemTitle?: string | null
+  /** Display order inside a multi-market event. */
+  groupItemThreshold?: number
+  /** Best bid / ask of the YES token. */
+  bestBid?: number
+  bestAsk?: number
+  acceptingOrders?: boolean
 }
 
 export interface MarketFilters {
@@ -80,6 +88,27 @@ export interface MarketFilters {
 
 export interface MarketsResult {
   markets: Market[]
+  nextCursor?: string
+}
+
+/** Normalized Gamma event — only binary (Yes/No) open markets are kept. */
+export interface PolyEvent {
+  id: string
+  slug: string
+  title: string
+  image?: string | null
+  icon?: string | null
+  volume: number
+  volume24h: number
+  liquidity: number
+  startDate?: string | null
+  endDate?: string | null
+  negRisk: boolean
+  markets: Market[]
+}
+
+export interface EventsResult {
+  events: PolyEvent[]
   nextCursor?: string
 }
 
@@ -209,10 +238,14 @@ export interface OrderBook {
 export interface OrderDraft {
   tokenId: string
   side: OrderSide
+  /** Limit price; for market orders the worst price walked on the book. */
   price: number
+  /** Shares for limit orders (ignored when `amount` is set). */
   size: number
   orderType: OrderType
   expiration?: number
+  /** Market order amount — BUY: USDC to spend, SELL: shares to sell. */
+  amount?: number
 }
 
 export interface PlaceOrderResponse {
@@ -310,7 +343,7 @@ export interface PublicProfile {
   ]
   xUsername?: string
   verifiedBadge?: boolean
-  bridge: {
+  bridge?: {
     address: {
       evm: string
       svm: string

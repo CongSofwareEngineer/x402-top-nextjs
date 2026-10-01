@@ -1,8 +1,7 @@
-import type { Challenge, GammaMarketRow } from './type'
+import type { Challenge, GammaEventRow, GammaMarketRow } from './type'
 
-import { builderHeader } from '../bridge'
 import { PolymarketApiError, baseUrl, parseJsonArray, requestJson, toNumber } from '../client'
-import { type GammaTag, type Market, type MarketFilters, type MarketsResult, type PublicProfile } from '../types'
+import { type EventsResult, type GammaTag, type Market, type MarketFilters, type MarketsResult, type PolyEvent, type PublicProfile } from '../types'
 
 import { KEY_POLY_MARKET } from '@/config/polymarket'
 
@@ -26,7 +25,7 @@ export function mapGammaMarket(row: GammaMarketRow): Market {
     liquidity: toNumber(row.liquidityNum ?? row.liquidity),
     active: row.active ?? undefined,
     closed: row.closed ?? undefined,
-    negRisk: event?.negRisk ?? undefined,
+    negRisk: row.negRisk ?? event?.negRisk ?? undefined,
     tickSize: toNumber(row.orderPriceMinTickSize, undefined),
     minOrderSize: toNumber(row.orderMinSize, undefined),
     image: row.image,
@@ -40,7 +39,85 @@ export function mapGammaMarket(row: GammaMarketRow): Market {
     events: row.events ?? undefined,
     eventId: event?.id,
     eventSlug: event?.slug ?? undefined,
+    groupItemTitle: row.groupItemTitle,
+    groupItemThreshold: toNumber(row.groupItemThreshold, undefined),
+    bestBid: toNumber(row.bestBid, undefined),
+    bestAsk: toNumber(row.bestAsk, undefined),
+    acceptingOrders: row.acceptingOrders ?? undefined,
   }
+}
+
+/** Open market whose outcomes are exactly `Yes` / `No`. */
+export function isYesNoMarket(market: Market): boolean {
+  const [first, second] = market.outcomes.map((o) => o.toLowerCase())
+
+  return (
+    market.outcomes.length === 2 &&
+    first === 'yes' &&
+    second === 'no' &&
+    market.clobTokenIds.length === 2 &&
+    !market.closed &&
+    market.acceptingOrders !== false
+  )
+}
+
+/**
+ * Map a Gamma event keeping only its open Yes/No markets.
+ * Neg-risk events (mutually exclusive outcomes) are ordered by chance like
+ * polymarket.com; the rest (e.g. "by date…") keep Gamma's threshold order.
+ */
+export function mapGammaEvent(row: GammaEventRow): PolyEvent {
+  const negRisk = !!row.negRisk
+  const markets = (row.markets ?? [])
+    .map((m) => ({ ...mapGammaMarket(m), negRisk: m.negRisk ?? negRisk, eventId: row.id, eventSlug: row.slug ?? undefined }))
+    .filter(isYesNoMarket)
+    .sort((a, b) => (negRisk ? (b.outcomePrices[0] ?? 0) - (a.outcomePrices[0] ?? 0) : (a.groupItemThreshold ?? 0) - (b.groupItemThreshold ?? 0)))
+
+  return {
+    id: row.id,
+    slug: row.slug ?? '',
+    title: row.title ?? '',
+    image: row.image,
+    icon: row.icon,
+    volume: toNumber(row.volume),
+    volume24h: toNumber(row.volume24hr),
+    liquidity: toNumber(row.liquidity),
+    startDate: row.startDate,
+    endDate: row.endDate,
+    negRisk,
+    markets,
+  }
+}
+
+/**
+ * List events via Gamma `/events/keyset` — the same feed polymarket.com uses
+ * for its homepage (Trending = `order=volume24hr`). Events left without any
+ * Yes/No market are dropped.
+ */
+export async function listEvents(filters: MarketFilters = {}): Promise<EventsResult> {
+  const params = new URLSearchParams()
+
+  params.set('closed', String(filters.closed ?? false))
+  params.set('order', filters.sort ?? 'volume24hr')
+  params.set('ascending', String(filters.ascending ?? false))
+  if (filters.limit != null) params.set('limit', String(filters.limit))
+  if (filters.cursor) params.set('after_cursor', filters.cursor)
+  if (filters.tagId) params.set('tag_id', filters.tagId)
+
+  const data = await requestJson<{ events: GammaEventRow[]; next_cursor?: string }>(baseUrl('GAMA'), `/events/keyset?${params.toString()}`)
+
+  return {
+    events: (data.events ?? []).map(mapGammaEvent).filter((e) => e.markets.length > 0),
+    nextCursor: data.next_cursor,
+  }
+}
+
+/** Fetch a single event by its slug (the `/event/<slug>` part of a polymarket.com URL). */
+export async function getEventBySlug(slug: string): Promise<PolyEvent | null> {
+  const rows = await requestJson<GammaEventRow[]>(baseUrl('GAMA'), `/events?slug=${encodeURIComponent(slug)}`)
+  const row = rows?.[0]
+
+  return row ? mapGammaEvent(row) : null
 }
 
 /**
@@ -99,25 +176,49 @@ export async function listTags(limit = 100): Promise<GammaTag[]> {
   return data ?? []
 }
 
-/** Public profile for a wallet. Returns null when the address has no profile. */
+/**
+ * Public profile + bridge deposit addresses for a Polymarket account wallet.
+ *
+ * Gamma only has a public profile once the user finished polymarket.com's
+ * profile onboarding (username). A brand-new Deposit Wallet returns
+ * `404 profile not found` — that is expected and must not hide the bridge
+ * deposit address, so both requests are resolved independently.
+ */
 export async function getProfileByAddress(address: string): Promise<PublicProfile | null> {
-  try {
-    const [profile, bridge] = await Promise.all([
-      requestJson<PublicProfile>(baseUrl('GAMA'), `/public-profile?address=${address}`),
-      requestJson(baseUrl('BRIDGE'), `/deposit`, {
-        method: 'POST',
-        body: JSON.stringify({
-          address: address,
-        }),
-        headers: {
-          'X-Builder-Code': KEY_POLY_MARKET.Builder.Code,
-        },
+  const [profile, bridge] = await Promise.allSettled([
+    requestJson<PublicProfile>(baseUrl('GAMA'), `/public-profile?address=${address}`),
+    requestJson<NonNullable<PublicProfile['bridge']>>(baseUrl('BRIDGE'), `/deposit`, {
+      method: 'POST',
+      body: JSON.stringify({
+        address: address,
       }),
-    ])
+      headers: {
+        'X-Builder-Code': KEY_POLY_MARKET.Builder.Code,
+      },
+    }),
+  ])
 
-    return { ...profile, bridge } as PublicProfile
+  if (profile.status === 'rejected' && bridge.status === 'rejected') return null
+
+  return {
+    ...(profile.status === 'fulfilled' ? profile.value : {}),
+    proxyWallet: address,
+    bridge: bridge.status === 'fulfilled' ? bridge.value : undefined,
+  } as PublicProfile
+}
+
+/**
+ * `proxyWallet` from the signer's Gamma profile — the account wallet
+ * polymarket.com uses for this EOA. `null` when the EOA has no profile.
+ */
+export async function getProfileWallet(signer: string): Promise<string | null> {
+  try {
+    const profile = await requestJson<PublicProfile>(baseUrl('GAMA'), `/public-profile?address=${signer}`)
+
+    return profile.proxyWallet ?? null
   } catch (error) {
-    return null
+    if (error instanceof PolymarketApiError && error.status === 404) return null
+    throw error
   }
 }
 
@@ -147,7 +248,6 @@ export async function getReferralCodes(code: string) {
   const body = JSON.stringify({
     code: code,
   })
-  const header = await builderHeader(body)
   const data = await requestJson(baseUrl('GAMA'), `/referral-codes`, {
     method: 'POST',
     body: body,
@@ -174,6 +274,10 @@ export async function login(signature: string, siweData: Record<string, any>) {
     body,
   })
   const data = await res.json()
+
+  if (!res.ok) {
+    throw new Error(data?.error ?? `Login failed: ${res.status}`)
+  }
 
   return data
 }

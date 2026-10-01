@@ -6,6 +6,8 @@ import { type ReactNode } from 'react'
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
 
 import { CHAIN_SUPPORT, DEFAULT_NETWORK, projectId, wagmiAdapter } from '@/config/appkit'
+import { KEYRING_PRO_WALLET } from '@/constants/keyringPro'
+import { useReCustomWeb3Modal } from '@/hooks/useReCustomWeb3Modal'
 
 // Set up queryClient
 const queryClient = new QueryClient()
@@ -34,10 +36,14 @@ export const appkit = createAppKit({
   },
   enableReconnect: true,
   allowUnsupportedChain: true,
+  featuredWalletIds: [KEYRING_PRO_WALLET.id],
+  // customWallets: [KEYRING_PRO_WALLET],
 })
 
 function AppkitProvider({ children, cookies }: { children: ReactNode; cookies: string | null }) {
   const initialState = cookieToInitialState(wagmiAdapter.wagmiConfig as Config, cookies)
+
+  useReCustomWeb3Modal()
 
   return (
     <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>

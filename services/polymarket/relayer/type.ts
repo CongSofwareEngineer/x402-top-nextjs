@@ -5,12 +5,6 @@ export interface BuilderAuthConfig {
   secret: string
 }
 
-/** Response from GET /relay-payload. */
-export interface RelayPayloadResponse {
-  address: string
-  nonce: string
-}
-
 /** Response from POST /submit. */
 export interface SubmitResponse {
   transactionID: string
@@ -27,8 +21,8 @@ export interface RelayerTransactionResponse {
   [key: string]: unknown
 }
 
-/** Result of deploying a Safe wallet. */
-export interface DeploySafeResult {
+/** Result of deploying a Deposit Wallet. */
+export interface DeployDepositWalletResult {
   transactionHash: string | null
   proxyAddress?: string
   state: string

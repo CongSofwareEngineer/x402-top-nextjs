@@ -15,6 +15,8 @@ export enum REACT_QUERY_POLY_MARKET {
   OPEN_ORDERS = 'polymarket_open_orders',
   ALL_ORDERS = 'polymarket_all_orders',
   TAGS = 'polymarket_tags',
+  EVENTS = 'polymarket_events',
+  EVENT = 'polymarket_event',
   CATEGORIES = 'polymarket_categories',
   SPORTS_MARKET_TYPES = 'polymarket_sports_market_types',
   DEPOSIT_ADDRESS = 'polymarket_deposit_address',
@@ -22,6 +24,6 @@ export enum REACT_QUERY_POLY_MARKET {
   SUPPORTED_ASSETS = 'polymarket_supported_assets',
   BRIDGE_QUOTE = 'polymarket_bridge_quote',
   PROFILE = 'polymarket_profile',
-  IS_DEPLOY = 'polymarket_is_deploy',
-  DEPLOY_SAFE = 'polymarket_deploy_safe',
+  ACCOUNT_WALLET = 'polymarket_account_wallet',
+  TRADING_APPROVALS = 'polymarket_trading_approvals',
 }

@@ -25,7 +25,7 @@ import {
   ERC1967_CONST2,
   ERC1967_PREFIX,
 } from '@/constants/contractPolyMarket'
-import { PROXY_INIT_CODE_HASH } from '@/constants/polymarket'
+import { PROXY_INIT_CODE_HASH, SAFE_INIT_CODE_HASH } from '@/constants/polymarket'
 
 function depositWalletArgs(owner: string, factory: string): Hex {
   const walletId = pad(owner as Hex, { dir: 'left', size: 32 })
@@ -89,6 +89,18 @@ export const deriveBeaconDepositWallet = (owner: string, factory: string, beacon
   const bytecodeHash = initCodeHashERC1967Beacon(beacon as Address, args)
 
   return getCreate2Address({ from: factory as Hex, salt, bytecodeHash })
+}
+
+/**
+ * Legacy Polymarket Gnosis Safe for an external-wallet signer (MetaMask,
+ * Rabby…) — the account wallet polymarket.com created before Deposit Wallets.
+ */
+export const deriveSafeWallet = (owner: string): string => {
+  return getCreate2Address({
+    from: CONTRACT_POLY_MARKET.SafeContracts.SafeFactory as Hex,
+    salt: keccak256(encodeAbiParameters([{ type: 'address' }], [owner as Address])),
+    bytecodeHash: SAFE_INIT_CODE_HASH as Hex,
+  })
 }
 
 export const deriveProxyWallet = (address: string): string => {

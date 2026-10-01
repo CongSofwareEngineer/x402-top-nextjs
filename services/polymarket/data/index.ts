@@ -1,5 +1,5 @@
 import type { Address } from 'viem'
-import type { ActivityRow, PositionRow, ProxyApprovalRow, ProxyApprovalsEnvelope } from './type'
+import type { ActivityRow, PositionRow, ProxyApprovalRow, ProxyApprovalsEnvelope, UserStatsRow } from './type'
 
 import { baseUrl, requestJson, toNumber } from '../client'
 import { type ActivityItem, type PaginationEnvelope, type PortfolioValue, type Position, type UserStats } from '../types'
@@ -107,16 +107,29 @@ export async function getActivity(user: string, limit = 50, cursor?: string): Pr
 
 /** `GET /v2/user-stats` — profile stats for a wallet. */
 export async function getUserStats(user: string): Promise<UserStats | null> {
-  const data = await requestJson<PaginationEnvelope<UserStats | null>>(baseUrl('DATA'), v2(`/user-stats?user=${encodeURIComponent(user)}`))
+  const data = await requestJson<PaginationEnvelope<UserStatsRow | null>>(baseUrl('DATA'), v2(`/user-stats?user=${encodeURIComponent(user)}`))
+  const row = data.data
 
-  if (!data.data) return null
+  // `data: null` = wallet has no trading history yet (not an error).
+  if (!row) return null
+
+  const pnl = row.all_time_pnl
 
   return {
-    proxyWallet: data.data.proxyWallet,
-    trades: toNumber(data.data.trades),
-    biggestWin: toNumber(data.data.biggestWin),
-    views: toNumber(data.data.views),
-    joinDate: data.data.joinDate,
-    allTimePnl: data.data.allTimePnl ?? null,
+    proxyWallet: row.proxy_wallet ?? user,
+    trades: toNumber(row.trades),
+    biggestWin: toNumber(row.biggest_win),
+    views: toNumber(row.views),
+    joinDate: row.join_date ?? null,
+    allTimePnl: pnl
+      ? {
+          ...pnl,
+          realizedPnl: toNumber(pnl.realized_pnl),
+          volumeUsdc: toNumber(pnl.volume_usdc),
+          tradeCount: toNumber(pnl.trade_count),
+          deposits: toNumber(pnl.deposits),
+          withdrawals: toNumber(pnl.withdrawals),
+        }
+      : null,
   }
 }

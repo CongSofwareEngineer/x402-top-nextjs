@@ -3,12 +3,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { REACT_QUERY_POLY_MARKET } from '@/constants/reactQuery'
+import { type PolymarketAccountWallet } from '@/web3/relay'
 
-interface DeploySafeRequest {
+interface DeployDepositWalletRequest {
   address: string
 }
 
-interface DeploySafeResponse {
+interface DeployDepositWalletResponse {
   success: boolean
   transactionHash: string | null
   proxyAddress?: string
@@ -17,30 +18,35 @@ interface DeploySafeResponse {
 }
 
 /**
- * Deploy the signer's Polymarket Safe wallet via the relayer.
- * On success, invalidates the IS_DEPLOY and PROFILE queries so the
- * UI re-checks deployment status and loads the newly available profile.
+ * Deploy the signer's Polymarket Deposit Wallet via the relayer (gasless,
+ * Builder-authenticated server-side — no user signature needed).
+ * On success, refreshes the deployment status and profile queries.
  */
-export function useDeploySafe() {
+export function useDeployDepositWallet() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ address }: DeploySafeRequest): Promise<DeploySafeResponse> =>
-      fetch('/api/polymarket/deploy', {
+    mutationFn: async ({ address }: DeployDepositWalletRequest): Promise<DeployDepositWalletResponse> => {
+      const res = await fetch('/api/polymarket/deploy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address }),
-      }).then((res) => {
-        if (!res.ok) {
-          throw new Error(`Deploy failed: ${res.status}`)
-        }
+      })
+      const data = (await res.json().catch(() => null)) as DeployDepositWalletResponse | null
 
-        return res.json()
-      }),
-    onSuccess: (_, variables) => {
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error ?? `Deploy failed: ${res.status}`)
+      }
+
+      return data
+    },
+    onSuccess: (data, variables) => {
       const accountKey = variables.address.toLowerCase()
 
-      queryClient.invalidateQueries({ queryKey: [REACT_QUERY_POLY_MARKET.IS_DEPLOY, accountKey] })
+      // The relayer returns the deployed wallet — trust it over local derivation.
+      queryClient.setQueryData<PolymarketAccountWallet>([REACT_QUERY_POLY_MARKET.ACCOUNT_WALLET, accountKey], (prev) =>
+        prev || data.proxyAddress ? { address: data.proxyAddress ?? prev!.address, type: 'DEPOSIT_WALLET', deployed: true } : prev
+      )
       queryClient.invalidateQueries({ queryKey: [REACT_QUERY_POLY_MARKET.PROFILE, accountKey] })
     },
   })

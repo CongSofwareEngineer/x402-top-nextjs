@@ -66,3 +66,21 @@ export interface ProxyApprovalsEnvelope {
     contracts?: ProxyApprovalRow[]
   }
 }
+
+/** Raw row from `GET /v2/user-stats` — snake_case fields. */
+export interface UserStatsRow {
+  proxy_wallet?: string
+  trades?: number
+  biggest_win?: number
+  views?: number
+  join_date?: number | null
+  all_time_pnl?: {
+    realized_pnl?: number
+    unrealized_pnl?: number
+    volume_usdc?: number
+    trade_count?: number
+    deposits?: number | null
+    withdrawals?: number | null
+    [k: string]: unknown
+  } | null
+}

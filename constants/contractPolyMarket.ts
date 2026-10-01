@@ -2,7 +2,7 @@ import { Hex } from 'viem'
 
 export const CONTRACT_POLY_MARKET = {
   DepositWalletFactory: '0x00000000000Fb5C9ADea0298D729A0CB3823Cc07',
-  DepositWalletImplementation: '0x528CC05EFac2B0d255e423272187efD41248aBd7',
+  DepositWalletImplementation: '0x58CA52ebe0DadfdF531Cde7062e76746de4Db1eB',
   SafeContracts: {
     SafeFactory: '0xaacFeEa03eb1561C4e67d661e40682Bd20E3541b',
     SafeMultisend: '0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761',

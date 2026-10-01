@@ -43,6 +43,9 @@ export const ORDER_TYPE = {
   FOK: 'FOK',
 } as const
 
+/** Smallest USDC amount the CLOB accepts for a market BUY. */
+export const MIN_MARKET_ORDER_USD = 1
+
 export const ORDER_STATUS = {
   LIVE: 'LIVE',
   MATCHED: 'MATCHED',
@@ -140,6 +143,7 @@ export const MARKET_SORT_PRESETS: { key: MarketSortKey; label: string; order: st
 
 export const STORAGE_KEYS = {
   CLOB_CREDENTIALS: 'polymarket_clob_credentials',
+  LOGIN: 'polymarket_login',
   MARKET_FILTERS: 'polymarket_market_filters',
 } as const
 
@@ -148,6 +152,41 @@ export const EXPLORERS = {
   BASE: 'https://basescan.org',
   POLYGON: 'https://polygonscan.com',
 } as const
+
+/** Bridge chain ids (as returned by `/supported-assets`) that are not EVM. */
+export const BRIDGE_NON_EVM_CHAINS = {
+  SOLANA: '1151111081099710',
+  BITCOIN: '8253038',
+  TRON: '728126428',
+  LIGHTNING: '29780',
+} as const
+
+/**
+ * Which `bridge.address` key receives deposits for a chain. Every chain not
+ * listed is EVM. Lightning needs an invoice, so it has no deposit address.
+ */
+export const BRIDGE_ADDRESS_TYPE_BY_CHAIN: Record<string, 'evm' | 'svm' | 'btc' | 'tron' | null> = {
+  [BRIDGE_NON_EVM_CHAINS.SOLANA]: 'svm',
+  [BRIDGE_NON_EVM_CHAINS.BITCOIN]: 'btc',
+  [BRIDGE_NON_EVM_CHAINS.TRON]: 'tron',
+  [BRIDGE_NON_EVM_CHAINS.LIGHTNING]: null,
+}
+
+/** Address explorer URL prefix per bridge chain id (`${prefix}/${address}`). */
+export const BRIDGE_CHAIN_EXPLORERS: Record<string, string> = {
+  '1': 'https://etherscan.io/address',
+  '10': 'https://optimistic.etherscan.io/address',
+  '56': 'https://bscscan.com/address',
+  '137': `${EXPLORERS.POLYGON}/address`,
+  '8453': `${EXPLORERS.BASE}/address`,
+  '42161': 'https://arbiscan.io/address',
+  '143': 'https://monadscan.com/address',
+  '999': 'https://hyperevmscan.io/address',
+  '57073': 'https://explorer.inkonchain.com/address',
+  [BRIDGE_NON_EVM_CHAINS.SOLANA]: 'https://solscan.io/account',
+  [BRIDGE_NON_EVM_CHAINS.BITCOIN]: 'https://mempool.space/address',
+  [BRIDGE_NON_EVM_CHAINS.TRON]: 'https://tronscan.org/#/address',
+}
 
 /** Bridge destination chain ids used by the withdraw flow. */
 export const BRIDGE_DESTINATION_CHAINS = {

@@ -1,43 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useAppKitAccount, useAppKitNetwork } from '@reown/appkit/react'
-import { useConnectorClient, useSendTransaction, useSignMessage, useSignTypedData } from 'wagmi'
-import { keccak256, encodeAbiParameters, parseAbiParameters, getAddress, encodePacked, Hex, concat, createWalletClient, http, custom } from 'viem'
-import { polygon } from 'viem/chains'
-import { RelayClient } from '@polymarket/builder-relayer-client'
-import { SiweMessage } from 'siwe'
+import { useState } from 'react'
+import { useAppKitAccount } from '@reown/appkit/react'
 
 import {
+  ONBOARDING_STEP,
   useBridgeStatus,
-  useCreateDepositAddress,
   useCreateWithdrawalAddress,
-  useDeploySafe,
   usePolyMarketPortfolio,
   usePolyMarketPositions,
   usePolyMarketProfile,
-  usePolyMarketIsDeploy,
+  usePolymarketOnboarding,
   useSupportedAssets,
+  type OnboardingStep,
 } from '@/hooks/polymarket'
 import { useWalletBalance } from '@/hooks/useWalletBalance'
-import { EXPLORERS } from '@/constants/polymarket'
-import { API_POLYMARKET, KEY_POLY_MARKET } from '@/config/polymarket'
-import { CONTRACT_POLY_MARKET } from '@/constants/contractPolyMarket'
-import RelayWeb3 from '@/web3/relay'
-import { deriveProxyWallet } from '@/utils/relay'
-import { createDepositAddress, deriveClobCredentials } from '@/services/polymarket'
-import { getWalletProxyApprovals } from '@/services/polymarket/data/index'
-import { buildDepositWalletBatchRequest, generateSignTypeDatApproveToken } from '@/utils/tokens'
-import { approveAllToken, getNonce } from '@/services/polymarket/relayer'
-import { sleep } from '@/utils/functions'
-import { getClobAuthTypedData } from '@/utils/clob'
-import { getChallenge, login } from '@/services/polymarket/gamma'
 
-interface GetProxyWalletParams {
-  factoryAddress: Hex // Địa chỉ Proxy Factory Contract
-  byteCodeHash: Hex // Hash bytecode của Proxy contract: keccak256(Proxy_Bytecode)
-  salt: Hex // Salt (thường là keccak256(userAddress) hoặc userAddress pad thành 32 bytes)
-}
+import { DepositCard } from './DepositCard'
 
 export function ProfileTab() {
   const { address, isConnected } = useAppKitAccount()
@@ -45,28 +24,18 @@ export function ProfileTab() {
   const { data: positions = [], isLoading: positionsLoading } = usePolyMarketPositions()
   const { data: profile } = usePolyMarketProfile()
   const { data: walletBalance, refetch: refetchWalletBalance } = useWalletBalance()
-  const { data: bridge = { transactions: [] } } = useBridgeStatus(address)
-  const { data: supportedAssets = [] } = useSupportedAssets()
-  const { data: isDeploy } = usePolyMarketIsDeploy()
-
-  const { mutate: createWithdrawal, data: withdrawalResult, isPending: withdrawalPending, error: withdrawalError } = useCreateWithdrawalAddress()
-  const { mutate: deploySafe, isPending: deployPending, error: deployError } = useDeploySafe()
-  const { mutateAsync: signTypedDataAsync } = useSignTypedData()
-  const [withdrawChainId, setWithdrawChainId] = useState('8453')
-  const { data: walletClient } = useConnectorClient()
-  const { mutateAsync: signTypedData } = useSignTypedData()
-  const { mutateAsync: signMessage } = useSignMessage()
-  const { mutateAsync: sendTransaction } = useSendTransaction()
-  const { chainId } = useAppKitNetwork()
-
   const depositAddress = profile?.bridge?.address?.evm
+  // `/status/{address}` takes the bridge address that received funds, not the wallet.
+  const { data: bridge = { transactions: [] } } = useBridgeStatus(depositAddress)
+  const { data: supportedAssets = [] } = useSupportedAssets()
+  const onboarding = usePolymarketOnboarding()
+
+  const { mutate: createWithdrawal, isPending: withdrawalPending, error: withdrawalError } = useCreateWithdrawalAddress()
+  const [withdrawChainId, setWithdrawChainId] = useState('8453')
+
   const withdrawalAddress = profile?.bridge?.address?.evm
   const portfolioValue = portfolio?.value ?? 0
   const positionsValue = positions.reduce((sum, p) => sum + p.currentValue, 0)
-
-  useEffect(() => {
-    console.log({ profile, isDeploy })
-  }, [profile, isDeploy])
 
   if (!isConnected) {
     return (
@@ -83,187 +52,13 @@ export function ProfileTab() {
   }
 
   const handleCreateWithdrawal = () => {
-    if (!address) return
+    if (!address || !onboarding.wallet) return
     createWithdrawal({
-      address,
+      address: onboarding.wallet,
       toChainId: withdrawChainId,
       toTokenAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
       recipientAddr: address,
     })
-  }
-
-  const deployAccount = async () => {
-    try {
-      const challenge = await getChallenge(address!)
-
-      const siweObject = new SiweMessage(challenge.fields)
-      const textToSign = siweObject.prepareMessage()
-
-      const signatureSignMessage = await signMessage({
-        message: textToSign,
-      })
-
-      await login(signatureSignMessage, siweObject)
-
-      // await createDepositAddress(address!)
-      // await sleep(2000)
-      const proxyWallet = profile?.proxyWallet!
-      const { nonce = '0' } = await getNonce(address!)
-      // const clobAuthTypedData = getClobAuthTypedData(address!, nonce)
-
-      // // console.log({ clobAuthTypedData })
-
-      // const signatureClobAuth = await signTypedData(clobAuthTypedData as any)
-
-      // const clobCredentials = await deriveClobCredentials(address!, signatureClobAuth, clobAuthTypedData.message.timestamp.toString())
-
-      // console.log({ clobCredentials })
-
-      // const clobCredentials = {
-      //   apiKey: '681d2135-4fc6-71a8-309e-f35952082553',
-      //   secret: 'w7CQQvBt_tDdFQ5fyjUwUHxOyogHOITmoVzI2sG_jFU=',
-      //   passphrase: '98f404b3fa1b4961283e75180c9dd300d59cad605a69f17f7947b8865f5e62f2',
-      // }
-
-      // // console.log({ clobCredentials })
-
-      // Deadline: 4 minutes from now
-      const nowInSeconds = Math.floor(Date.now() / 1000)
-      const deadline = nowInSeconds + 3600 // Hạn chót là 1 tiếng sau
-
-      const tokens = await getWalletProxyApprovals(proxyWallet)
-      const tokeTemp = tokens[0]
-      const message = generateSignTypeDatApproveToken(chainId! as number, proxyWallet!, [tokeTemp], deadline, nonce)
-
-      console.log({ message, tokens })
-
-      const signature = await signTypedData(message as any)
-
-      const args = {
-        from: address!,
-        chainId: chainId! as number,
-        walletAddress: proxyWallet,
-        nonce: nonce,
-        deadline,
-        calls: message.message.calls,
-      }
-      const body = buildDepositWalletBatchRequest(signature, args as any)
-      const resApi = await approveAllToken(body)
-
-      console.log({ message, nonce, signature, body, resApi })
-
-      // // Nếu salt chính là địa chỉ EOA của user được pad 32 bytes:
-      // const userAddress = address! as Hex
-      // const builderSecret = KEY_POLY_MARKET.Builder.Secret
-      // const builderApiKey = KEY_POLY_MARKET.Builder.ApiKey
-      // const builderPassphrase = KEY_POLY_MARKET.Builder.Passphrase
-      // const signerAddress = address // Địa chỉ ví signer của bạn
-      // const relayWeb3 = new RelayWeb3(chainId)
-      // const proxyAddress = await relayWeb3.deriveDepositWalletAddress(address!)
-      // console.log({ proxyAddress })
-      // // const uupsAddress = deriveUupsDepositWallet(
-      // //   address!,
-      // //   CONTRACT_POLY_MARKET.DepositWalletFactory,
-      // //   CONTRACT_POLY_MARKET.DepositWalletImplementation
-      // // )
-      // // const wallet = createWalletClient({
-      // //   account: walletClient?.account,
-      // //   chain: polygon,
-      // //   // transport: http('https://api.zan.top/polygon-mainnet'),
-      // //   transport: custom(walletClient?.transport!),
-      // // })
-      // // // Khởi tạo Relay Client
-      // // const client = new RelayClient(
-      // //   API_POLYMARKET.RELAYER,
-      // //   polygon.id, // Chain ID 137,
-      // //   wallet as any,
-      // //   null,
-      // //   null,
-      // //   {
-      // //     chain: polygon,
-      // //   }
-      // // )
-      // // const proxyAddress2 = await client.deriveDepositWalletAddress()
-      // // console.log({ proxyAddress2 })
-      // // const isDeploy = await client.getDeployed(address!)
-      // // if (!isDeploy) {
-      // //   // const resDeploy = await client.deploy()
-      // //   // const resDepositWallet = await client.deployDepositWallet()
-      // //   // console.log({ resDeploy, resDepositWallet })
-      // // }
-      // // const creds: ApiKeyCreds = {
-      // //   key: builderApiKey,
-      // //   secret: builderSecret,
-      // //   passphrase: builderPassphrase,
-      // // }
-      // // const a = createWalletClient({
-      // //   transport: http(polygon.rpcUrls.default.http[0]),
-      // // }).extend(publicActions)
-      // // const clobPolyClient = new ClobClient(API_POLYMARKET.CLOB, polygon.id, a, creds)
-      // // console.log({ clobPolyClient, authen })
-      // // const body = JSON.stringify({
-      // //   type: 'WALLET-CREATE',
-      // //   from: signerAddress,
-      // //   to: '0x00000000000Fb5C9ADea0298D729A0CB3823Cc07',
-      // //   metadata: 'Deploy Deposit Wallet',
-      // // })
-      // // const timestamp = Math.floor(Date.now() / 1000)
-      // // const method = 'POST'
-      // // const path = '/submit'
-      // // const signature = await buildHmacSignature(builderSecret, timestamp, method, path, body)
-      // // const clientSecureClient = await createSecureClient({
-      // //   signer: {
-      // //     getAddress: async () => Promise.resolve(address!),
-      // //     signMessage: async (message) => {
-      // //       const res = await signMessage({
-      // //         message: {
-      // //           raw: message,
-      // //         },
-      // //       })
-      // //       return res
-      // //     },
-      // //     sendTransaction: async (transaction) => Promise.resolve(sendTransaction(transaction)),
-      // //     signTypedData: async (typedData) => Promise.resolve(signTypedData(typedData)),
-      // //   },
-      // //   wallet: address,
-      // //   apiKey: {
-      // //     POLY_BUILDER_API_KEY: builderApiKey,
-      // //     POLY_BUILDER_PASSPHRASE: builderPassphrase,
-      // //     POLY_BUILDER_SIGNATURE: signature,
-      // //     POLY_BUILDER_TIMESTAMP: `${timestamp}`,
-      // //   },
-      // // })
-      // // clientSecureClient.account
-      // // const client = createPublicClient()
-      // // console.log({ account: clientSecureClient.account, client, clientSecureClient })
-      // // const proxyAddress = deriveDepositWalletAddress(address?.toString() as string)
-      // // console.log({ proxyAddress })
-      // // // ⚠️ QUAN TRỌNG: Body phải được stringify chính xác như lúc bạn gửi đi
-      // // // Nếu dùng JSON.stringify mặc định, nó sẽ không có khoảng trắng thừa.
-      // // const body = JSON.stringify({
-      // //   type: 'WALLET-CREATE',
-      // //   from: signerAddress,
-      // //   to: '0x00000000000Fb5C9ADea0298D729A0CB3823Cc07',
-      // //   metadata: 'Deploy Deposit Wallet',
-      // // })
-      // // // Tạo signature
-      // // // Gửi request
-      // // const response = await fetch('https://relayer-v2.polymarket.com/submit', {
-      // //   method: 'POST',
-      // //   headers: {
-      // //     'Content-Type': 'application/json',
-      // //     POLY_BUILDER_API_KEY: builderApiKey,
-      // //     POLY_BUILDER_TIMESTAMP: timestamp.toString(),
-      // //     POLY_BUILDER_PASSPHRASE: builderPassphrase,
-      // //     POLY_BUILDER_SIGNATURE: signature,
-      // //   },
-      // //   body: body, // Gửi đúng chuỗi body đã dùng để ký
-      // // })
-      // // const result = await response.json()
-      // // console.log('Kết quả:', result)
-    } catch (error) {
-      console.log({ error })
-    }
   }
 
   const selectedAsset = supportedAssets.find((a) => a.chainId === withdrawChainId)
@@ -363,70 +158,12 @@ export function ProfileTab() {
         />
       </div>
 
-      {!isDeploy === false && (
-        <div className='bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6'>
-          <h3 className='text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2'>
-            <DeployIcon className='w-5 h-5 text-orange-600' />
-            Deploy Polymarket Account
-          </h3>
-          <p className='text-sm text-gray-500 dark:text-gray-400 mb-4'>
-            Your Polymarket Safe wallet is not deployed yet. Deploy it to start trading and depositing funds.
-          </p>
-          {deployError && <p className='text-sm text-red-500 mb-4'>{(deployError as Error).message}</p>}
-          <button
-            onClick={deployAccount}
-            disabled={deployPending || !address}
-            className='w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2'
-          >
-            {deployPending ? 'Deploying...' : 'Deploy Safe Wallet'}
-          </button>
-        </div>
-      )}
+      {onboarding.currentStep !== ONBOARDING_STEP.DONE && <OnboardingCard onboarding={onboarding} />}
 
-      {isDeploy !== false && (
+      {onboarding.status.isDeployed && <DepositCard />}
+
+      {onboarding.status.isDeployed && (
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-          <div className='bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6'>
-            <h3 className='text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2'>
-              <DepositIcon className='w-5 h-5 text-blue-600' />
-              Deposit USDC
-            </h3>
-            <p className='text-sm text-gray-500 dark:text-gray-400 mb-4'>
-              Send USDC from your wallet to the deposit address below to fund your Polymarket trading account.
-            </p>
-            {depositAddress ? (
-              <div className='space-y-3'>
-                <div className='bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700'>
-                  <label className='block text-xs text-gray-500 dark:text-gray-400 mb-1'>Deposit address (Base USDC)</label>
-                  <div className='flex items-center gap-2'>
-                    <code className='flex-1 text-xs font-mono text-gray-900 dark:text-white break-all'>{depositAddress}</code>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(depositAddress)}
-                      className='px-2 py-1 text-xs text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 flex-shrink-0'
-                    >
-                      Copy
-                    </button>
-                  </div>
-                </div>
-                <div className='flex flex-wrap gap-2'>
-                  <a
-                    href={`${EXPLORERS.BASE}/address/${depositAddress}`}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                  >
-                    View on BaseScan
-                  </a>
-                  <button
-                    onClick={() => {}}
-                    className='px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700'
-                  >
-                    Refresh address
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-
           <div className='bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6'>
             <h3 className='text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2'>
               <WithdrawIcon className='w-5 h-5 text-green-600' />
@@ -574,6 +311,119 @@ export function ProfileTab() {
   )
 }
 
+const ONBOARDING_STEPS: {
+  key: Exclude<OnboardingStep, typeof ONBOARDING_STEP.DONE>
+  title: string
+  description: string
+  action: string
+  pendingLabel: string
+}[] = [
+  {
+    key: ONBOARDING_STEP.LOGIN,
+    title: 'Login',
+    description: 'Sign in to Polymarket with your wallet (free message signature).',
+    action: 'Sign in',
+    pendingLabel: 'Signing in...',
+  },
+  {
+    key: ONBOARDING_STEP.DEPLOY,
+    title: 'Deploy wallet',
+    description: 'Create your Polymarket Deposit Wallet on Polygon. Gasless, no signature needed.',
+    action: 'Deploy',
+    pendingLabel: 'Deploying...',
+  },
+  {
+    key: ONBOARDING_STEP.ENABLE_TRADING,
+    title: 'Enable trading',
+    description: 'Sign once to create your trading API credentials.',
+    action: 'Enable',
+    pendingLabel: 'Enabling...',
+  },
+  {
+    key: ONBOARDING_STEP.APPROVE,
+    title: 'Approve tokens',
+    description: 'Approve pUSD and outcome tokens for the exchanges in one gasless transaction.',
+    action: 'Approve all',
+    pendingLabel: 'Approving...',
+  },
+]
+
+function OnboardingCard({ onboarding }: { onboarding: ReturnType<typeof usePolymarketOnboarding> }) {
+  const { currentStep, status, steps, wallet, walletType, isLoading } = onboarding
+
+  const isDone = {
+    [ONBOARDING_STEP.LOGIN]: status.isLoggedIn,
+    [ONBOARDING_STEP.DEPLOY]: status.isDeployed,
+    [ONBOARDING_STEP.ENABLE_TRADING]: status.isTradingEnabled,
+    [ONBOARDING_STEP.APPROVE]: status.isApproved,
+  }
+  const actions = {
+    [ONBOARDING_STEP.LOGIN]: steps.login,
+    [ONBOARDING_STEP.DEPLOY]: steps.deploy,
+    [ONBOARDING_STEP.ENABLE_TRADING]: steps.enableTrading,
+    [ONBOARDING_STEP.APPROVE]: steps.approveAll,
+  }
+  const isBusy = isLoading || Object.values(actions).some((action) => action.isPending)
+
+  return (
+    <div className='bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6'>
+      <h3 className='text-lg font-semibold text-gray-900 dark:text-white mb-1 flex items-center gap-2'>
+        <DeployIcon className='w-5 h-5 text-orange-600' />
+        Set up your Polymarket account
+      </h3>
+      {wallet && (
+        <p className='text-xs text-gray-500 dark:text-gray-400 mb-4'>
+          {walletType === 'SAFE' ? 'Polymarket wallet (Safe)' : 'Deposit wallet'}: <span className='font-mono break-all'>{wallet}</span>
+        </p>
+      )}
+      <ol className='space-y-3'>
+        {ONBOARDING_STEPS.map((step, index) => {
+          const done = isDone[step.key]
+          const active = currentStep === step.key
+          const action = actions[step.key]
+
+          return (
+            <li
+              key={step.key}
+              className={`flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border p-4 ${
+                active ? 'border-orange-300 dark:border-orange-700 bg-orange-50/50 dark:bg-orange-900/10' : 'border-gray-200 dark:border-gray-700'
+              }`}
+            >
+              <div className='flex items-start gap-3 flex-1 min-w-0'>
+                <span
+                  className={`w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center text-sm font-semibold ${
+                    done
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : active
+                        ? 'bg-orange-600 text-white'
+                        : 'bg-gray-100 text-gray-400 dark:bg-gray-700'
+                  }`}
+                >
+                  {done ? '✓' : index + 1}
+                </span>
+                <div className='min-w-0'>
+                  <p className='font-medium text-gray-900 dark:text-white'>{step.title}</p>
+                  <p className='text-sm text-gray-500 dark:text-gray-400'>{step.description}</p>
+                  {action.error && <p className='text-sm text-red-500 mt-1 break-words'>{action.error.message}</p>}
+                </div>
+              </div>
+              {active && (
+                <button
+                  onClick={action.run}
+                  disabled={isBusy}
+                  className='px-4 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0'
+                >
+                  {action.isPending ? step.pendingLabel : step.action}
+                </button>
+              )}
+            </li>
+          )
+        })}
+      </ol>
+    </div>
+  )
+}
+
 function formatNumber(num: number) {
   if (num >= 1e9) return `${(num / 1e9).toFixed(2)}B`
   if (num >= 1e6) return `${(num / 1e6).toFixed(2)}M`
@@ -641,14 +491,6 @@ function ChartIcon({ className }: { className?: string }) {
         strokeWidth={2}
         d='M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'
       />
-    </svg>
-  )
-}
-
-function DepositIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 4v16m8-8H4' />
     </svg>
   )
 }

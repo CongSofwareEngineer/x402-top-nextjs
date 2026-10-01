@@ -1,30 +1,28 @@
 'use client'
 
-import type { Market } from '@/services/polymarket'
-
 import { useState } from 'react'
 
 import { PolymarketLayout, type TabType } from '@/component/polymarket/PolymarketLayout'
 import { MarketsTab } from '@/component/polymarket/MarketsTab'
-import { TradeTab } from '@/component/polymarket/TradeTab'
+import { TradeTab, type TradeSelection } from '@/component/polymarket/TradeTab'
 import { ProfileTab } from '@/component/polymarket/ProfileTab'
 import { HistoryTab } from '@/component/polymarket/HistoryTab'
 
 const PolyMarketPage = () => {
   const [activeTab, setActiveTab] = useState<TabType>('markets')
-  const [selectedMarket, setSelectedMarket] = useState<Market | null>(null)
+  const [selection, setSelection] = useState<TradeSelection | null>(null)
 
-  const handleMarketSelect = (market: Market) => {
-    setSelectedMarket(market)
+  const handleSelect = (next: TradeSelection) => {
+    setSelection(next)
     setActiveTab('trade')
   }
 
   return (
     <PolymarketLayout activeTab={activeTab} onTabChange={setActiveTab}>
-      {activeTab === 'markets' && <MarketsTab onMarketSelect={handleMarketSelect} />}
+      {activeTab === 'markets' && <MarketsTab onSelect={handleSelect} />}
       {activeTab === 'trade' &&
-        (selectedMarket ? (
-          <TradeTab market={selectedMarket} />
+        (selection ? (
+          <TradeTab key={`${selection.event.id}-${selection.marketId}-${selection.outcomeIndex}`} selection={selection} />
         ) : (
           <div className='text-center py-12 text-gray-500 dark:text-gray-400'>Select a market from the Markets tab to start trading.</div>
         ))}

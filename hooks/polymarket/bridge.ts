@@ -3,11 +3,9 @@
 import type { Address, Hex } from 'viem'
 
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useAppKitAccount } from '@reown/appkit/react'
 
 import { REACT_QUERY_POLY_MARKET } from '@/constants/reactQuery'
 import {
-  createDepositAddress,
   createWithdrawalAddress,
   getBridgeQuote,
   getBridgeStatus,
@@ -37,18 +35,6 @@ export function useBridgeStatus(address: string | undefined) {
     enabled: !!address,
     staleTime: 30_000,
     refetchInterval: 60_000,
-  })
-}
-
-/**
- * Create (or refresh) the wallet's deposit address. The user sends Base USDC
- * to this address to fund their Polymarket account.
- */
-export function useCreateDepositAddress() {
-  const { address } = useAppKitAccount()
-
-  return useMutation({
-    mutationFn: async (): Promise<BridgeDepositResponse> => createDepositAddress(address!),
   })
 }
 
