@@ -1,5 +1,5 @@
 import type { Address } from 'viem'
-import type { ActivityRow, PositionRow, ProxyApprovalRow, ProxyApprovalsEnvelope, UserStatsRow } from './type'
+import type { ActivityRow, PositionRow, UserStatsRow } from './type'
 
 import { baseUrl, requestJson, toNumber } from '../client'
 import { type ActivityItem, type PaginationEnvelope, type PortfolioValue, type Position, type UserStats } from '../types'
@@ -61,14 +61,6 @@ export async function getPositions(user: string, status: 'OPEN' | 'REDEEMABLE' |
   )
 
   return (data.data ?? []).map(mapPosition)
-}
-
-export async function getWalletProxyApprovals(proxyWallet: string): Promise<ProxyApprovalRow[]> {
-  const data = await requestJson<ProxyApprovalsEnvelope>(baseUrl('DATA'), v2(encodeURI(`/approvals?user=${proxyWallet}`)))
-
-  const tokens = data.data?.contracts ?? []
-
-  return tokens.filter((token) => !token.approved && token.feature === 'trading')
 }
 
 function mapActivity(row: ActivityRow): ActivityItem {

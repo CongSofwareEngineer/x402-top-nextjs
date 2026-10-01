@@ -1,14 +1,24 @@
 'use client'
 
-import type { Market, MarketQuote, OrderBook, OrderSide, PolyEvent } from '@/services/polymarket'
+import type { Market, MarketOrderInput, MarketQuote, OrderBook, OrderSide, PolyEvent } from '@/services/polymarket'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
-import { formatCents, formatChance, formatUsd, formatVolume, marketLabel, outcomeQuotes, yesChance } from './format'
+import { formatCents, formatChance, formatUsd, formatVolume } from './format'
 
-import { useClobSession, usePlaceOrder, usePolyMarketEvent, usePolyMarketOrderBook, usePolyMarketPositions } from '@/hooks/polymarket'
-import { quoteBuyUsd, quoteSellShares, quoteSellUsd } from '@/services/polymarket'
-import { MIN_MARKET_ORDER_USD, ORDER_SIDE, ORDER_TYPE } from '@/constants/polymarket'
+import { usePlaceMarketOrder, usePolymarketOnboarding, usePolyMarketEvent, usePolyMarketOrderBook, usePolyMarketPositions } from '@/hooks/polymarket'
+import {
+  ceil2,
+  floor2,
+  marketLabel,
+  ONBOARDING_STEP,
+  ORDER_SIDE,
+  outcomeQuotes,
+  prepareMarketOrder,
+  quoteMarketOrder,
+  quoteSellShares,
+  yesChance,
+} from '@/services/polymarket'
 
 export interface TradeSelection {
   event: PolyEvent
@@ -19,9 +29,6 @@ export interface TradeSelection {
 
 const BUY_PRESETS = [1, 5, 10, 100]
 const SELL_PRESETS = [0.25, 0.5]
-
-const floor2 = (value: number) => Math.floor(value * 100 + 1e-9) / 100
-const ceil2 = (value: number) => Math.ceil(value * 100 - 1e-9) / 100
 
 export function TradeTab({ selection }: { selection: TradeSelection }) {
   const { data: freshEvent } = usePolyMarketEvent(selection.event.slug, selection.event)
@@ -40,13 +47,13 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
 
   const { data: orderBook, refetch: refetchBook } = usePolyMarketOrderBook(tokenId)
   const { data: positions } = usePolyMarketPositions()
-  const { isAuthenticated, authenticate, isLoading: authLoading, error: authError } = useClobSession()
-  const { mutate: placeOrder, isPending: orderPending, error: orderError, data: orderResult, reset: resetOrder } = usePlaceOrder()
+  const { currentStep } = usePolymarketOnboarding()
+  const { mutate: placeOrder, isPending: orderPending, error: orderError, data: orderResult, reset: resetOrder } = usePlaceMarketOrder()
 
   const heldShares = positions?.find((p) => p.tokenId === tokenId)?.currentSize ?? 0
   const usd = parseFloat(amount)
-
-  const quote = useMemo(() => buildQuote(orderBook, side, usd, sellAll, heldShares), [orderBook, side, usd, sellAll, heldShares])
+  const input = toOrderInput(side, usd, sellAll, positions ? heldShares : undefined)
+  const quote = quoteMarketOrder(orderBook, input)
 
   const changeAmount = (value: string) => {
     setAmount(value)
@@ -74,38 +81,14 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
 
   const submit = async () => {
     setFormError(null)
-    if (!tokenId || !market) return
+    if (!tokenId) return
 
+    // Re-quote against a fresh book so the price limit matches what fills now.
     const { data: book } = await refetchBook()
-    const fresh = buildQuote(book ?? orderBook, side, usd, sellAll, heldShares)
+    const prepared = prepareMarketOrder(tokenId, book ?? orderBook, input)
 
-    if (!fresh) return setFormError('Enter an amount')
-    if (!fresh.filled) return setFormError('Not enough liquidity in the order book for this amount')
-
-    if (side === ORDER_SIDE.BUY) {
-      if (usd < MIN_MARKET_ORDER_USD) return setFormError(`Minimum order is $${MIN_MARKET_ORDER_USD}`)
-
-      return placeOrder(
-        {
-          draft: { tokenId, side, price: fresh.worstPrice, size: fresh.shares, amount: floor2(usd), orderType: ORDER_TYPE.FOK },
-          negRisk: !!market.negRisk,
-        },
-        { onSuccess: (res) => res.success && setAmount('') }
-      )
-    }
-
-    const shares = sellAll ? floor2(heldShares) : Math.min(ceil2(fresh.shares), positions ? floor2(heldShares) : Infinity)
-
-    if (positions && fresh.shares > heldShares + 1e-6) return setFormError(`You only hold ${heldShares.toFixed(2)} ${outcomeName} shares`)
-    if (shares <= 0) return setFormError('Amount too small')
-
-    placeOrder(
-      {
-        draft: { tokenId, side, price: fresh.worstPrice, size: shares, amount: shares, orderType: ORDER_TYPE.FOK },
-        negRisk: !!market.negRisk,
-      },
-      { onSuccess: (res) => res.success && setAmount('') }
-    )
+    if ('error' in prepared) return setFormError(prepared.error)
+    placeOrder(prepared.order, { onSuccess: () => setAmount('') })
   }
 
   if (!market || !tokenId) {
@@ -195,19 +178,11 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
           })}
         </div>
 
-        {!isAuthenticated ? (
+        {currentStep !== ONBOARDING_STEP.DONE ? (
           <div className='bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4'>
-            <p className='text-sm text-amber-800 dark:text-amber-300 mb-3'>
-              Enable trading to place orders. This signs a one-time message with your wallet.
+            <p className='text-sm text-amber-800 dark:text-amber-300'>
+              Finish setting up your account in the Profile tab (deploy wallet, enable trading, approve tokens) to place orders.
             </p>
-            {authError && <p className='text-sm text-red-500 mb-3'>{authError.message}</p>}
-            <button
-              onClick={() => authenticate().catch(() => {})}
-              disabled={authLoading}
-              className='w-full px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50'
-            >
-              {authLoading ? 'Signing message...' : 'Enable trading'}
-            </button>
           </div>
         ) : (
           <>
@@ -255,11 +230,10 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
             <QuoteSummary quote={quote} side={side} />
 
             {formError && <p className='text-sm text-red-500 mb-3'>{formError}</p>}
-            {orderError && <p className='text-sm text-red-500 mb-3'>{(orderError as Error).message}</p>}
-            {orderResult && !orderResult.success && orderResult.errorMsg && <p className='text-sm text-red-500 mb-3'>{orderResult.errorMsg}</p>}
-            {orderResult?.success && (
+            {orderError && <p className='text-sm text-red-500 mb-3 break-words'>{orderError.message}</p>}
+            {orderResult && (
               <p className='text-sm text-green-600 dark:text-green-400 mb-3'>
-                Order filled ({orderResult.orderID?.slice(0, 10)}...) — status {orderResult.status}
+                Order filled ({orderResult.orderId.slice(0, 10)}...) — status {orderResult.status}
               </p>
             )}
 
@@ -279,13 +253,14 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
   )
 }
 
-/** Walk the book: BUY spends `usd`; SELL receives `usd` (or dumps every held share). */
-function buildQuote(book: OrderBook | undefined, side: OrderSide, usd: number, sellAll: boolean, heldShares: number): MarketQuote | null {
-  if (!book) return null
-  if (side === ORDER_SIDE.SELL && sellAll) return heldShares > 0 ? quoteSellShares(book.bids, floor2(heldShares)) : null
-  if (!Number.isFinite(usd) || usd <= 0) return null
+/** BUY spends `usd`; SELL receives `usd`, or dumps every held share (`sellAll`). */
+function toOrderInput(side: OrderSide, usd: number, sellAll: boolean, heldShares: number | undefined): MarketOrderInput {
+  const amount = Number.isFinite(usd) ? usd : 0
 
-  return side === ORDER_SIDE.BUY ? quoteBuyUsd(book.asks, usd) : quoteSellUsd(book.bids, usd)
+  if (side === ORDER_SIDE.BUY) return { side: ORDER_SIDE.BUY, usd: amount }
+  if (sellAll) return { side: ORDER_SIDE.SELL, shares: floor2(heldShares ?? 0), heldShares }
+
+  return { side: ORDER_SIDE.SELL, usd: amount, heldShares }
 }
 
 function QuoteSummary({ quote, side }: { quote: MarketQuote | null; side: OrderSide }) {

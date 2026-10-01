@@ -1,7 +1,44 @@
+/**
+ * Polymarket SDK — framework-agnostic logic (no React / React Query / wagmi).
+ * The demo app wraps these with React Query hooks in `hooks/polymarket`.
+ *
+ * Server-only code (Builder secret, `node:crypto`) lives in `./relayer` and is
+ * intentionally not exported here.
+ */
 export * from './types'
-export { PolymarketApiError, requestJson } from './client'
-export { listMarkets, listEvents, getEventBySlug, isYesNoMarket, getMarket, getMarketByToken, listTags, getProfileByAddress, getProfileWallet, getIsDeploy, searchPublic } from './gamma'
+export * from './constants'
+export { PolymarketApiError } from './client'
+export { listEvents, getEventBySlug, getProfileByAddress, getProfileWallet } from './gamma'
 export { getPortfolioValue, getPositions, getActivity, getUserStats } from './data'
-export { getSupportedAssets, createWithdrawalAddress, getBridgeQuote, getBridgeStatus } from './bridge'
-export { getOrderBook, getMarketPrice, getMidpoint, getClobMarketInfo, deriveClobCredentials, ClobSession } from './clob'
-export { signExchangeOrder, computeOrderAmounts, exchangeAddressFor, quoteBuyUsd, quoteSellUsd, quoteSellShares, type MarketQuote } from './orders'
+export { getSupportedAssets, getDepositAddress, createWithdrawalAddress, getBridgeStatus } from './bridge'
+export { getOrderBook } from './clob'
+export {
+  floor2,
+  ceil2,
+  quoteBuyUsd,
+  quoteSellUsd,
+  quoteSellShares,
+  quoteMarketOrder,
+  prepareMarketOrder,
+  yesChance,
+  outcomeQuotes,
+  marketLabel,
+  parsePolymarketUrl,
+} from './market'
+export { resolveAccountWallet, deriveDepositWallet, deriveSafeWallet, getCashBalance, requestDeployDepositWallet } from './wallet'
+export {
+  createTradingSession,
+  credentialsOf,
+  fetchTradingApprovalsState,
+  placeMarketOrder,
+  listOpenOrders,
+  cancelOrder,
+  redeemPositions,
+  getOnboardingStep,
+  ONBOARDING_STEP,
+  type OnboardingStep,
+  type TradingClient,
+  type TradingSession,
+  type TradingSessionOptions,
+  type KeyValueStorage,
+} from './trading'

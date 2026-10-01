@@ -4,11 +4,11 @@ import type { TradeSelection } from './TradeTab'
 
 import { useMemo, useState } from 'react'
 
-import { formatCents, formatChance, formatVolume, marketLabel, outcomeQuotes, parsePolymarketUrl, yesChance } from './format'
+import { formatCents, formatChance, formatVolume } from './format'
 
 import { usePolyMarketEvents } from '@/hooks/polymarket'
-import { getEventBySlug, type Market, type PolyEvent } from '@/services/polymarket'
-import { MARKET_SORT_PRESETS, PAGINATION, POLYMARKET_CATEGORIES, type MarketSortKey } from '@/constants/polymarket'
+import { getEventBySlug, marketLabel, outcomeQuotes, parsePolymarketUrl, yesChance, type Market, type PolyEvent } from '@/services/polymarket'
+import { MARKET_SORT_PRESETS, MARKETS_PAGE_SIZE, POLYMARKET_CATEGORIES, type MarketSortKey } from '@/constants/polymarket'
 
 interface MarketsTabProps {
   onSelect: (selection: TradeSelection) => void
@@ -26,7 +26,7 @@ export function MarketsTab({ onSelect }: MarketsTabProps) {
 
     return {
       closed: false,
-      limit: PAGINATION.MARKETS_PAGE_SIZE,
+      limit: MARKETS_PAGE_SIZE,
       sort: preset.order,
       ascending: preset.ascending,
       tagId: categoryId,

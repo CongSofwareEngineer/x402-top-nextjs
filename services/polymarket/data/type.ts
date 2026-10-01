@@ -51,27 +51,6 @@ export interface ActivityRow {
   is_combo?: boolean
 }
 
-/** Raw contract approval row from `GET /v2/approvals`. */
-export interface ProxyApprovalRow {
-  id?: string
-  feature?: string
-  token?: string
-  spender?: string
-  standard?: string
-  amount?: string
-  approved?: boolean
-}
-
-/** Raw response envelope from `GET /v2/approvals`. */
-export interface ProxyApprovalsEnvelope {
-  data: {
-    address?: string
-    chain_id?: number
-    checked_at?: string
-    contracts?: ProxyApprovalRow[]
-  }
-}
-
 /** Raw row from `GET /v2/user-stats` — snake_case fields. */
 export interface UserStatsRow {
   proxy_wallet?: string

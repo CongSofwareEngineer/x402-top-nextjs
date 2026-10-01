@@ -1,4 +1,4 @@
-import { API_POLYMARKET } from '@/config/polymarket'
+import { API_POLYMARKET } from '../constants'
 
 export class PolymarketApiError extends Error {
   status: number
@@ -59,15 +59,6 @@ export function parseJsonArray<T>(value: unknown, fallback: T[] = []): T[] {
     const parsed: unknown = JSON.parse(value)
 
     return Array.isArray(parsed) ? (parsed as T[]) : fallback
-  } catch {
-    return fallback
-  }
-}
-
-export function parseBigIntString(value: unknown, fallback = 0): number {
-  if (typeof value !== 'string') return fallback
-  try {
-    return Number(BigInt(value))
   } catch {
     return fallback
   }

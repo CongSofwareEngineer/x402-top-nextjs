@@ -8,7 +8,8 @@ import QRCode from 'qrcode'
 import { zeroAddress } from 'viem'
 
 import { usePolyMarketProfile, useSupportedAssets } from '@/hooks/polymarket'
-import { BRIDGE_ADDRESS_TYPE_BY_CHAIN, BRIDGE_CHAIN_EXPLORERS } from '@/constants/polymarket'
+import { BRIDGE_CHAIN_EXPLORERS } from '@/constants/polymarket'
+import { getDepositAddress } from '@/services/polymarket'
 
 const ALL_CHAINS = 'all'
 
@@ -55,10 +56,8 @@ export function DepositCard() {
 
   const visibleCount = visibleChains.reduce((sum, c) => sum + c.assets.length, 0)
 
-  // Unlisted chains (and "all") are EVM; `null` means the chain has no deposit address.
-  const mappedType = BRIDGE_ADDRESS_TYPE_BY_CHAIN[selectedChainId]
-  const addressType = mappedType === undefined ? 'evm' : mappedType
-  const depositAddress = addressType ? profile?.bridge?.address?.[addressType] : undefined
+  // "All chains" shows the EVM address.
+  const depositAddress = getDepositAddress(profile?.bridge?.address, selectedChainId === ALL_CHAINS ? undefined : selectedChainId)
   const selectedChainName = chains.find((c) => c.chainId === selectedChainId)?.chainName
   const explorer = selectedChainId === ALL_CHAINS ? undefined : BRIDGE_CHAIN_EXPLORERS[selectedChainId]
 

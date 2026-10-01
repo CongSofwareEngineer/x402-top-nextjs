@@ -1,8 +1,7 @@
 'use client'
 
 import { type ReactNode } from 'react'
-import { useAppKitAccount, useAppKitNetwork, useAppKit } from '@reown/appkit/react'
-import { base, baseSepolia } from '@reown/appkit/networks'
+import { useAppKitAccount, useAppKit } from '@reown/appkit/react'
 
 export type TabType = 'markets' | 'trade' | 'profile' | 'history'
 
@@ -14,7 +13,6 @@ interface PolymarketLayoutProps {
 
 export function PolymarketLayout({ children, activeTab, onTabChange }: PolymarketLayoutProps) {
   const { address, isConnected } = useAppKitAccount()
-  const { chainId, switchNetwork } = useAppKitNetwork()
   const { open } = useAppKit()
 
   const tabs: { id: TabType; label: string; icon: ReactNode }[] = [
@@ -26,14 +24,6 @@ export function PolymarketLayout({ children, activeTab, onTabChange }: Polymarke
 
   const handleConnect = () => {
     open({ view: 'Connect' })
-  }
-
-  const handleSwitchNetwork = async () => {
-    try {
-      await switchNetwork(base)
-    } catch (error) {
-      console.error('Failed to switch network:', error)
-    }
   }
 
   return (

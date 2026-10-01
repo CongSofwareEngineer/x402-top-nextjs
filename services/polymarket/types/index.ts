@@ -1,11 +1,6 @@
-import type { Address, Hex } from 'viem'
-
-/** Outcome names for a standard binary market. */
-export type TradeOutcome = 'Yes' | 'No'
+import type { Address } from 'viem'
 
 export type OrderSide = 'BUY' | 'SELL'
-export type OrderType = 'GTC' | 'GTD' | 'FAK' | 'FOK'
-export type CLOBOrderStatus = 'live' | 'matched' | 'delayed' | 'unmatched'
 
 export interface GammaTag {
   id: string
@@ -75,20 +70,12 @@ export interface Market {
 
 export interface MarketFilters {
   tagId?: string
-  tagIds?: string[]
   closed?: boolean
   limit?: number
   cursor?: string
-  /** Gamma `/markets/keyset` order field, e.g. `volume`, `liquidity`, `volume24hr`, `startDate`, `endDate`, `competitive`. */
+  /** Gamma `/events/keyset` order field, e.g. `volume24hr`, `volume`, `liquidity`, `startDate`, `endDate`, `competitive`. */
   sort?: string
   ascending?: boolean
-  sportsMarketTypes?: string[]
-  search?: string
-}
-
-export interface MarketsResult {
-  markets: Market[]
-  nextCursor?: string
 }
 
 /** Normalized Gamma event — only binary (Yes/No) open markets are kept. */
@@ -209,27 +196,6 @@ export interface ClobCredentials {
   passphrase: string
 }
 
-/** CLOB `GET /data/orders` row. */
-export interface OpenOrder {
-  id: string
-  status: string
-  owner: string
-  makerAddress: string
-  market: string
-  assetId: string
-  side: OrderSide
-  originalSize: number
-  sizeMatched: number
-  price: number
-  outcome: 'YES' | 'NO'
-  expiration: string
-  orderType: OrderType
-  associateTrades?: string[]
-  createdAt: number
-  /** Enriched market title from Gamma (filled by the app). */
-  title?: string
-}
-
 /** CLOB `GET /book` summary. */
 export interface OrderBook {
   market?: string
@@ -244,35 +210,6 @@ export interface OrderBook {
   lastTradePrice?: number
 }
 
-export interface OrderDraft {
-  tokenId: string
-  side: OrderSide
-  /** Limit price; for market orders the worst price walked on the book. */
-  price: number
-  /** Shares for limit orders (ignored when `amount` is set). */
-  size: number
-  orderType: OrderType
-  expiration?: number
-  /** Market order amount — BUY: USDC to spend, SELL: shares to sell. */
-  amount?: number
-}
-
-export interface PlaceOrderResponse {
-  success: boolean
-  errorMsg?: string
-  orderID?: string
-  status?: CLOBOrderStatus
-  makingAmount?: string
-  takingAmount?: string
-  transactionsHashes?: string[]
-  tradeIDs?: string[]
-}
-
-export interface CancelOrderResponse {
-  canceled: string[]
-  notCanceled: Record<string, string>
-}
-
 /** Bridge API. */
 export interface BridgeAddresses {
   evm: string
@@ -281,9 +218,10 @@ export interface BridgeAddresses {
   tron: string
 }
 
-export interface BridgeDepositResponse {
-  transactionID: string
-  state?: string
+/** Bridge `POST /withdraw` — addresses that forward pUSD to the chosen destination. */
+export interface BridgeWithdrawResponse {
+  address: BridgeAddresses
+  note?: string
 }
 
 export interface SupportedAsset {
@@ -291,32 +229,6 @@ export interface SupportedAsset {
   chainName: string
   token: { name: string; symbol: string; address: string; decimals: number }
   minCheckoutUsd: number
-}
-
-export interface BridgeQuoteRequest {
-  fromAmountBaseUnit: string
-  fromChainId: string
-  fromTokenAddress: string
-  recipientAddress: string
-  toChainId: string
-  toTokenAddress: string
-}
-
-export interface BridgeQuote {
-  quoteId: string
-  estInputUsd: number
-  estOutputUsd: number
-  estToTokenBaseUnit: string
-  estCheckoutTimeMs: number
-  estFeeBreakdown?: {
-    appFeeLabel?: string
-    appFeeUsd?: number
-    gasUsd?: number
-    minReceived?: number
-    maxSlippage?: number
-    swapImpactUsd?: number
-    totalImpactUsd?: number
-  }
 }
 
 export interface BridgeTransaction {
@@ -353,17 +265,54 @@ export interface PublicProfile {
   xUsername?: string
   verifiedBadge?: boolean
   bridge?: {
-    address: {
-      evm: string
-      svm: string
-      btc: string
-      tron: string
-    }
+    address: BridgeAddresses
     note: string
   }
 }
 
-/** Signature function compatible with wagmi `signTypedDataAsync`. */
-export type SignTypedData = (typedData: unknown) => Promise<Hex>
+/** The signer's Polymarket account wallet — holds pUSD and positions. */
+export interface PolymarketAccountWallet {
+  address: string
+  /** `SAFE` = legacy polymarket.com account, `DEPOSIT_WALLET` = accounts created after May 4, 2026. */
+  type: 'DEPOSIT_WALLET' | 'SAFE'
+  deployed: boolean
+}
 
-export type { Address, Hex }
+/** Open (resting) CLOB order of the account. */
+export interface OpenOrder {
+  id: string
+  /** Condition id. */
+  market: string
+  assetId: string
+  side: OrderSide
+  outcome: string
+  price: number
+  originalSize: number
+  sizeMatched: number
+  /** Epoch milliseconds. */
+  createdAt: number
+}
+
+export type BookLevel = { price: number; size: number }
+
+/** Result of walking the order book for a market order. */
+export interface MarketQuote {
+  /** Shares bought / sold. */
+  shares: number
+  /** USDC spent (BUY) or received (SELL). */
+  usd: number
+  avgPrice: number
+  /** Worst level touched — used as the order's price limit. */
+  worstPrice: number
+  /** `false` when the book does not have enough depth. */
+  filled: boolean
+}
+
+/** What the user asks for: BUY spends `usd`; SELL receives `usd` or sells exactly `shares`. */
+export type MarketOrderInput =
+  { side: 'BUY'; usd: number } | { side: 'SELL'; usd: number; heldShares?: number } | { side: 'SELL'; shares: number; heldShares?: number }
+
+/** Validated market order, ready for `placeMarketOrder`. */
+export type MarketOrder = { tokenId: string; orderType?: 'FOK' | 'FAK' } & (
+  { side: 'BUY'; amount: number; maxPrice: number } | { side: 'SELL'; shares: number; minPrice: number }
+)

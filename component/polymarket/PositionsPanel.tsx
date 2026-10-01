@@ -4,10 +4,16 @@ import type { Position } from '@/services/polymarket'
 
 import { Fragment, useMemo, useState } from 'react'
 
-import { formatCents, formatUsd } from './format'
+import { formatCents, formatSignedUsd, formatUsd } from './format'
 
-import { usePolyMarketClosedPositions, usePolyMarketOrderBook, usePolyMarketPositions, useRedeemPositions, useSellPosition } from '@/hooks/polymarket'
-import { quoteSellShares } from '@/services/polymarket'
+import {
+  usePlaceMarketOrder,
+  usePolyMarketClosedPositions,
+  usePolyMarketOrderBook,
+  usePolyMarketPositions,
+  useRedeemPositions,
+} from '@/hooks/polymarket'
+import { floor2, ORDER_SIDE, prepareMarketOrder, quoteSellShares } from '@/services/polymarket'
 
 type PositionsTab = 'active' | 'claim' | 'closed'
 
@@ -16,10 +22,6 @@ const SELL_PRESETS = [
   { label: '50%', fraction: 0.5 },
   { label: 'Max', fraction: 1 },
 ]
-
-const floor2 = (value: number) => Math.floor(value * 100 + 1e-9) / 100
-
-const formatSignedUsd = (value: number) => `${value >= 0 ? '+' : '-'}${formatUsd(Math.abs(value))}`
 
 const pnlClass = (value: number) => (value >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')
 
@@ -176,24 +178,20 @@ function SellForm({ position, onDone }: { position: Position; onDone: () => void
   const [formError, setFormError] = useState<string | null>(null)
 
   const { data: book, isLoading: bookLoading, refetch: refetchBook } = usePolyMarketOrderBook(position.tokenId)
-  const sell = useSellPosition()
+  const sell = usePlaceMarketOrder()
 
   const shares = floor2(parseFloat(amount) || 0)
   const quote = useMemo(() => (book && shares > 0 ? quoteSellShares(book.bids, shares) : null), [book, shares])
 
   const submit = async () => {
     setFormError(null)
-    if (shares <= 0) return setFormError('Enter the number of shares to sell.')
-    if (shares > heldShares) return setFormError(`You only hold ${heldShares} shares.`)
 
     const { data: freshBook } = await refetchBook()
-    const fresh = quoteSellShares((freshBook ?? book)?.bids ?? [], shares)
+    const prepared = prepareMarketOrder(position.tokenId, freshBook ?? book, { side: ORDER_SIDE.SELL, shares, heldShares })
 
-    if (fresh.shares <= 0) return setFormError('No buyers for this outcome right now.')
-    if (!fresh.filled) return setFormError(`Not enough liquidity — only ${floor2(fresh.shares)} shares can be sold right now.`)
-
-    // Never fill below the worst bid we quoted against.
-    sell.mutate({ tokenId: position.tokenId, shares, minPrice: fresh.worstPrice })
+    if ('error' in prepared) return setFormError(prepared.error)
+    // FAK: fill what the book takes now, never below the quoted worst bid.
+    sell.mutate({ ...prepared.order, orderType: 'FAK' })
   }
 
   if (sell.isSuccess) {

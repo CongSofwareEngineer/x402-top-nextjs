@@ -3,9 +3,7 @@ import type { BuilderAuthConfig, DeployDepositWalletResult, RelayerTransactionRe
 import { createHmac } from 'node:crypto'
 
 import { baseUrl, requestJson } from '../client'
-
-import { SUBMIT_TRANSACTION, TransactionType } from '@/constants/polymarket'
-import { CONTRACT_POLY_MARKET } from '@/constants/contractPolyMarket'
+import { CONTRACTS, RELAYER_SUBMIT_PATH } from '../constants'
 
 /**
  * SERVER ONLY — reads the Builder API secret from env and uses `node:crypto`.
@@ -56,14 +54,14 @@ export function buildBuilderHeaders(config: BuilderAuthConfig, method: string, r
  */
 async function submitWalletCreate(signerAddress: string, auth: BuilderAuthConfig): Promise<SubmitResponse> {
   const body = JSON.stringify({
-    type: TransactionType.WALLET_CREATE,
+    type: 'WALLET-CREATE',
     from: signerAddress,
-    to: CONTRACT_POLY_MARKET.DepositWalletFactory,
+    to: CONTRACTS.DepositWalletFactory,
     metadata: 'Deploy Deposit Wallet',
   })
-  const headers = buildBuilderHeaders(auth, 'POST', SUBMIT_TRANSACTION, body)
+  const headers = buildBuilderHeaders(auth, 'POST', RELAYER_SUBMIT_PATH, body)
 
-  return requestJson<SubmitResponse>(baseUrl('RELAYER'), SUBMIT_TRANSACTION, {
+  return requestJson<SubmitResponse>(baseUrl('RELAYER'), RELAYER_SUBMIT_PATH, {
     method: 'POST',
     headers,
     body,

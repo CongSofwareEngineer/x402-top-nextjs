@@ -1,20 +1,16 @@
-export { useClobSession, useEnsurePolygon, usePolymarketSecureClient } from './session'
-export { usePolymarketOnboarding, usePolyMarketTradingApprovals, ONBOARDING_STEP, type OnboardingStep } from './onboarding'
-export { usePolyMarketMarkets, usePolyMarketEvents, usePolyMarketEvent, usePolyMarketTags, usePolyMarketOrderBook, usePolyMarketPrice, usePolyMarketMidpoint } from './markets'
+export { useEnsurePolygon, usePolymarketCredentials, usePolymarketTradingClient } from './session'
+export { usePolymarketOnboarding, usePolyMarketTradingApprovals } from './onboarding'
+export { usePolyMarketEvents, usePolyMarketEvent, usePolyMarketOrderBook } from './markets'
 export {
-  usePolyMarketAccount,
+  usePolyMarketAccountWallet,
+  usePolyMarketWalletAddress,
+  usePolyMarketProfile,
   usePolyMarketPortfolio,
   usePolyMarketPositions,
   usePolyMarketClosedPositions,
   usePolyMarketCashBalance,
   usePolyMarketActivity,
   usePolyMarketUserStats,
-  usePolyMarketProfile,
-  usePolyMarketIsDeploy,
-  usePolyMarketAccountWallet,
-  usePolyMarketWalletAddress,
 } from './account'
-export { useDeployDepositWallet } from './deploy'
-export { useSellPosition, useRedeemPositions } from './positions'
-export { usePolyMarketOpenOrders, usePlaceOrder, useCancelOrder } from './orders'
-export { useSupportedAssets, useBridgeStatus, useCreateWithdrawalAddress, useBridgeQuote } from './bridge'
+export { usePolyMarketOpenOrders, usePlaceMarketOrder, useCancelOrder, useRedeemPositions } from './trading'
+export { useSupportedAssets, useBridgeStatus, useCreateWithdrawalAddress } from './bridge'

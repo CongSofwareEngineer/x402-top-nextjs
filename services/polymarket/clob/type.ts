@@ -11,6 +11,3 @@ export interface RawBook {
   neg_risk?: boolean
   last_trade_price?: string
 }
-
-/** CLOB order side alias. */
-export type ClobOrderSide = 'BUY' | 'SELL'

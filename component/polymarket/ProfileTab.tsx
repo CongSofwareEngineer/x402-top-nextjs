@@ -7,7 +7,6 @@ import { DepositCard } from './DepositCard'
 import { PositionsPanel } from './PositionsPanel'
 
 import {
-  ONBOARDING_STEP,
   useBridgeStatus,
   useCreateWithdrawalAddress,
   usePolyMarketCashBalance,
@@ -17,10 +16,10 @@ import {
   usePolyMarketUserStats,
   usePolymarketOnboarding,
   useSupportedAssets,
-  type OnboardingStep,
 } from '@/hooks/polymarket'
 import { useWalletBalance } from '@/hooks/useWalletBalance'
 import { EXPLORERS } from '@/constants/polymarket'
+import { ONBOARDING_STEP, type OnboardingStep } from '@/services/polymarket'
 
 export function ProfileTab() {
   const { address, isConnected } = useAppKitAccount()
@@ -36,10 +35,10 @@ export function ProfileTab() {
   const { data: supportedAssets = [] } = useSupportedAssets()
   const onboarding = usePolymarketOnboarding()
 
-  const { mutate: createWithdrawal, isPending: withdrawalPending, error: withdrawalError } = useCreateWithdrawalAddress()
+  const { mutate: createWithdrawal, isPending: withdrawalPending, error: withdrawalError, data: withdrawal } = useCreateWithdrawalAddress()
   const [withdrawChainId, setWithdrawChainId] = useState('8453')
 
-  const withdrawalAddress = profile?.bridge?.address?.evm
+  const withdrawalAddress = withdrawal?.address?.evm
   // `/v2/value` = open positions only; polymarket.com's Portfolio = positions + cash.
   const positionsValue = portfolio?.value ?? positions.reduce((sum, p) => sum + p.currentValue, 0)
   const portfolioValue = positionsValue + (cash ?? 0)
@@ -66,17 +65,23 @@ export function ProfileTab() {
     )
   }
 
+  // One withdraw token per chain — USDC when the bridge supports it there.
+  const withdrawAssets = Array.from(new Set(supportedAssets.map((a) => a.chainId)), (chainId) => {
+    const onChain = supportedAssets.filter((a) => a.chainId === chainId)
+
+    return onChain.find((a) => a.token.symbol === 'USDC') ?? onChain[0]
+  })
+  const selectedAsset = withdrawAssets.find((a) => a.chainId === withdrawChainId)
+
   const handleCreateWithdrawal = () => {
-    if (!address || !onboarding.wallet) return
+    if (!address || !onboarding.wallet || !selectedAsset) return
     createWithdrawal({
       address: onboarding.wallet,
       toChainId: withdrawChainId,
-      toTokenAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+      toTokenAddress: selectedAsset.token.address,
       recipientAddr: address,
     })
   }
-
-  const selectedAsset = supportedAssets.find((a) => a.chainId === withdrawChainId)
 
   return (
     <div className='space-y-6'>
@@ -167,14 +172,12 @@ export function ProfileTab() {
           value={formatCurrency(portfolioValue)}
           subtitle={`${formatCurrency(positionsValue)} in ${activeCount} active ${activeCount === 1 ? 'position' : 'positions'}`}
           icon={<ChartIcon className='w-6 h-6' />}
-          color='purple'
         />
         <BalanceCard
           title='Cash'
           value={cashLoading ? 'Loading...' : formatCurrency(cash ?? 0)}
           subtitle='pUSD on Polygon · available to trade'
           icon={<WalletIcon className='w-6 h-6' />}
-          color='blue'
         />
         <BalanceCard
           title='Wallet Balance'
@@ -185,7 +188,6 @@ export function ProfileTab() {
               : `No USDC on ${walletBalance.chain?.name ?? 'this network'}`
           }
           icon={<WalletIcon className='w-6 h-6' />}
-          color='green'
           action={
             walletBalance.isSupported && (
               <button onClick={() => walletBalance.refetch()} className='text-xs text-blue-600 dark:text-blue-400 hover:underline'>
@@ -200,7 +202,6 @@ export function ProfileTab() {
           valueClassName={pnl > 0 ? 'text-green-600 dark:text-green-400' : pnl < 0 ? 'text-red-600 dark:text-red-400' : undefined}
           subtitle={`All-time · ${formatCurrency(volume)} volume`}
           icon={<ChartIcon className='w-6 h-6' />}
-          color='green'
         />
       </div>
 
@@ -226,15 +227,11 @@ export function ProfileTab() {
                   onChange={(e) => setWithdrawChainId(e.target.value)}
                   className='w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent'
                 >
-                  {supportedAssets.length > 0 ? (
-                    supportedAssets.map((asset) => (
-                      <option key={`${asset.chainId}-${asset.token.address}`} value={asset.chainId}>
-                        {asset.chainName} · {asset.token.symbol}
-                      </option>
-                    ))
-                  ) : (
-                    <option value='8453'>Base · USDC</option>
-                  )}
+                  {withdrawAssets.map((asset) => (
+                    <option key={asset.chainId} value={asset.chainId}>
+                      {asset.chainName} · {asset.token.symbol}
+                    </option>
+                  ))}
                 </select>
               </div>
               {selectedAsset && (
@@ -244,12 +241,12 @@ export function ProfileTab() {
               )}
               <button
                 onClick={handleCreateWithdrawal}
-                disabled={withdrawalPending}
+                disabled={withdrawalPending || !selectedAsset}
                 className='w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2'
               >
                 {withdrawalPending ? 'Creating destination...' : 'Create withdrawal destination'}
               </button>
-              {withdrawalError && <p className='text-sm text-red-500'>{(withdrawalError as Error).message}</p>}
+              {withdrawalError && <p className='text-sm text-red-500'>{withdrawalError.message}</p>}
               {withdrawalAddress && (
                 <div className='bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700'>
                   <label className='block text-xs text-gray-500 dark:text-gray-400 mb-1'>Withdrawal address (send pUSD here)</label>
@@ -314,13 +311,6 @@ const ONBOARDING_STEPS: {
   pendingLabel: string
 }[] = [
   {
-    key: ONBOARDING_STEP.LOGIN,
-    title: 'Login',
-    description: 'Sign in to Polymarket with your wallet (free message signature).',
-    action: 'Sign in',
-    pendingLabel: 'Signing in...',
-  },
-  {
     key: ONBOARDING_STEP.DEPLOY,
     title: 'Deploy wallet',
     description: 'Create your Polymarket Deposit Wallet on Polygon. Gasless, no signature needed.',
@@ -347,13 +337,11 @@ function OnboardingCard({ onboarding }: { onboarding: ReturnType<typeof usePolym
   const { currentStep, status, steps, wallet, walletType, isLoading } = onboarding
 
   const isDone = {
-    [ONBOARDING_STEP.LOGIN]: status.isLoggedIn,
     [ONBOARDING_STEP.DEPLOY]: status.isDeployed,
     [ONBOARDING_STEP.ENABLE_TRADING]: status.isTradingEnabled,
     [ONBOARDING_STEP.APPROVE]: status.isApproved,
   }
   const actions = {
-    [ONBOARDING_STEP.LOGIN]: steps.login,
     [ONBOARDING_STEP.DEPLOY]: steps.deploy,
     [ONBOARDING_STEP.ENABLE_TRADING]: steps.enableTrading,
     [ONBOARDING_STEP.APPROVE]: steps.approveAll,
@@ -450,15 +438,8 @@ function BalanceCard({
   valueClassName?: string
   subtitle: string
   icon: React.ReactNode
-  color: 'blue' | 'green' | 'purple'
   action?: React.ReactNode
 }) {
-  const colorClasses = {
-    blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400',
-    green: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400',
-    purple: 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400',
-  }
-
   return (
     <div className='bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6'>
       <div className='flex items-center justify-between'>
@@ -467,7 +448,7 @@ function BalanceCard({
           <p className={`text-2xl font-bold mt-1 ${valueClassName}`}>{value}</p>
           <p className='text-sm text-gray-500 dark:text-gray-400'>{subtitle}</p>
         </div>
-        <div className={`p-3 rounded-xl `}>{icon}</div>
+        <div className='p-3 rounded-xl'>{icon}</div>
       </div>
       {action && <div className='mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end'>{action}</div>}
     </div>

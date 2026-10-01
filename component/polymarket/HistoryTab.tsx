@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAppKitAccount } from '@reown/appkit/react'
 
-import { useCancelOrder, useClobSession, usePolyMarketActivity, usePolyMarketOpenOrders } from '@/hooks/polymarket'
+import { useCancelOrder, usePolymarketCredentials, usePolyMarketActivity, usePolyMarketOpenOrders } from '@/hooks/polymarket'
 import { EXPLORERS } from '@/constants/polymarket'
 
 export function HistoryTab() {
@@ -11,7 +11,7 @@ export function HistoryTab() {
   const [activeTab, setActiveTab] = useState<'trades' | 'orders'>('trades')
 
   const { data: activity, isLoading: tradesLoading, isError: tradesError } = usePolyMarketActivity()
-  const { isAuthenticated, authenticate, isLoading: authLoading, error: authError } = useClobSession()
+  const { data: credentials } = usePolymarketCredentials()
   const { data: orders = [], isLoading: ordersLoading } = usePolyMarketOpenOrders()
   const { mutate: cancelOrder, isPending: cancelPending } = useCancelOrder()
 
@@ -168,17 +168,9 @@ export function HistoryTab() {
 
       {activeTab === 'orders' && (
         <div className='bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden'>
-          {!isAuthenticated ? (
-            <div className='p-12 text-center'>
-              <p className='text-gray-700 dark:text-gray-300 mb-4'>Enable trading with Polymarket to see and manage your open orders.</p>
-              {authError && <p className='text-sm text-red-500 mb-4'>{authError.message}</p>}
-              <button
-                onClick={() => authenticate().catch(() => {})}
-                disabled={authLoading}
-                className='px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50'
-              >
-                {authLoading ? 'Signing message...' : 'Enable trading'}
-              </button>
+          {!credentials ? (
+            <div className='p-12 text-center text-gray-700 dark:text-gray-300'>
+              Enable trading in the Profile tab to see and manage your open orders.
             </div>
           ) : ordersLoading && orders.length === 0 ? (
             <div className='p-6 text-center'>
@@ -205,9 +197,11 @@ export function HistoryTab() {
                 <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
                   {orders.map((order) => (
                     <tr key={order.id} className='hover:bg-gray-50 dark:hover:bg-gray-800/50'>
-                      <td className='px-6 py-4 text-sm text-gray-900 dark:text-white'>{formatDate(order.createdAt * 1000)}</td>
+                      <td className='px-6 py-4 text-sm text-gray-900 dark:text-white'>{formatDate(order.createdAt)}</td>
                       <td className='px-6 py-4'>
-                        <div className='text-sm font-medium text-gray-900 dark:text-white truncate max-w-xs'>{order.title ?? order.market}</div>
+                        <div className='text-sm font-mono text-gray-900 dark:text-white truncate max-w-xs' title={order.market}>
+                          {order.market.slice(0, 10)}...
+                        </div>
                       </td>
                       <td className='px-6 py-4'>
                         <span
@@ -223,7 +217,7 @@ export function HistoryTab() {
                       <td className='px-6 py-4'>
                         <span
                           className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                            order.outcome === 'YES'
+                            order.outcome.toLowerCase() === 'yes'
                               ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                               : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                           }`}

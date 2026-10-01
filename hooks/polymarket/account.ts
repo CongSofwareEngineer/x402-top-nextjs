@@ -2,49 +2,32 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useAppKitAccount } from '@reown/appkit/react'
-import { erc20Abi, formatUnits, type Address } from 'viem'
-import { polygon } from 'viem/chains'
-import { useConfig } from 'wagmi'
-import { readContract } from '@wagmi/core'
 
-import { PUSD_ADDRESS, TOKEN_DECIMALS } from '@/constants/polymarket'
 import { REACT_QUERY_POLY_MARKET } from '@/constants/reactQuery'
 import {
   getActivity,
-  getProfileWallet,
+  getCashBalance,
   getPortfolioValue,
   getPositions,
   getProfileByAddress,
   getUserStats,
-  type ActivityItem,
-  type PortfolioValue,
-  type Position,
+  resolveAccountWallet,
+  type PolymarketAccountWallet,
   type PublicProfile,
-  type UserStats,
 } from '@/services/polymarket'
-import RelayWeb3, { type PolymarketAccountWallet } from '@/web3/relay'
 
 function useAccountWalletQueryOptions() {
   const { address, isConnected } = useAppKitAccount()
 
   return {
     queryKey: [REACT_QUERY_POLY_MARKET.ACCOUNT_WALLET, address?.toLowerCase()],
-    queryFn: async (): Promise<PolymarketAccountWallet> => {
-      const profileWallet = await getProfileWallet(address!).catch(() => null)
-
-      return new RelayWeb3(polygon.id).resolveAccountWallet(address!, profileWallet)
-    },
+    queryFn: (): Promise<PolymarketAccountWallet> => resolveAccountWallet(address!),
     enabled: !!address && isConnected,
     staleTime: Infinity,
   }
 }
 
-/**
- * The connected signer's Polymarket account wallet — a legacy Gnosis Safe
- * ("v1" polymarket.com accounts) or a Deposit Wallet — with its deployment
- * status. This, not the EOA, holds pUSD/positions and is what Data / Gamma /
- * Bridge APIs and the SDK must be queried with.
- */
+/** The connected signer's Polymarket account wallet (Safe or Deposit Wallet) and its deployment status. */
 export function usePolyMarketAccountWallet() {
   return useQuery(useAccountWalletQueryOptions())
 }
@@ -54,135 +37,92 @@ export function usePolyMarketWalletAddress() {
   return useQuery({ ...useAccountWalletQueryOptions(), select: (wallet) => wallet.address })
 }
 
-export function usePolyMarketIsDeploy() {
-  return useQuery({ ...useAccountWalletQueryOptions(), select: (wallet) => wallet.deployed })
-}
-
 /**
  * Public profile + bridge deposit address for the account wallet.
  * A new account has no Gamma profile yet (404) — the result then only
  * carries `proxyWallet` and `bridge`.
  */
 export function usePolyMarketProfile() {
-  const { address } = useAppKitAccount()
-  const { data: depositWallet } = usePolyMarketWalletAddress()
-  const { data: isDeploy } = usePolyMarketIsDeploy()
+  const { data: accountWallet } = usePolyMarketAccountWallet()
+  const wallet = accountWallet?.address
 
   return useQuery({
-    queryKey: [REACT_QUERY_POLY_MARKET.PROFILE, address?.toLowerCase()],
-    queryFn: async (): Promise<PublicProfile> => {
-      const res = await getProfileByAddress(depositWallet!)
-
-      return res ?? ({ proxyWallet: depositWallet! } as PublicProfile)
-    },
-    enabled: !!depositWallet && !!isDeploy,
+    queryKey: [REACT_QUERY_POLY_MARKET.PROFILE, wallet],
+    queryFn: async (): Promise<PublicProfile> => (await getProfileByAddress(wallet!)) ?? { proxyWallet: wallet },
+    enabled: !!wallet && !!accountWallet?.deployed,
     staleTime: 600_000,
     retry: false,
   })
 }
 
 export function usePolyMarketPortfolio() {
-  const { data: depositWallet } = usePolyMarketWalletAddress()
+  const { data: wallet } = usePolyMarketWalletAddress()
 
   return useQuery({
-    queryKey: [REACT_QUERY_POLY_MARKET.PORTFOLIO_VALUE, depositWallet],
-    queryFn: (): Promise<PortfolioValue | null> => getPortfolioValue(depositWallet!),
-    enabled: !!depositWallet,
+    queryKey: [REACT_QUERY_POLY_MARKET.PORTFOLIO_VALUE, wallet],
+    queryFn: () => getPortfolioValue(wallet!),
+    enabled: !!wallet,
     staleTime: 30_000,
     refetchInterval: 60_000,
   })
 }
 
 export function usePolyMarketPositions() {
-  const { data: depositWallet } = usePolyMarketWalletAddress()
+  const { data: wallet } = usePolyMarketWalletAddress()
 
   return useQuery({
-    queryKey: [REACT_QUERY_POLY_MARKET.POSITIONS, depositWallet],
-    queryFn: (): Promise<Position[]> => getPositions(depositWallet!, 'OPEN'),
-    enabled: !!depositWallet,
+    queryKey: [REACT_QUERY_POLY_MARKET.POSITIONS, wallet],
+    queryFn: () => getPositions(wallet!, 'OPEN'),
+    enabled: !!wallet,
     staleTime: 30_000,
     refetchInterval: 60_000,
   })
 }
 
-/** Resolved positions that were redeemed or fully sold (`/v2/positions?status=CLOSED`). */
+/** Resolved positions that were redeemed or fully sold. */
 export function usePolyMarketClosedPositions() {
-  const { data: depositWallet } = usePolyMarketWalletAddress()
+  const { data: wallet } = usePolyMarketWalletAddress()
 
   return useQuery({
-    queryKey: [REACT_QUERY_POLY_MARKET.CLOSED_POSITIONS, depositWallet],
-    queryFn: (): Promise<Position[]> => getPositions(depositWallet!, 'CLOSED'),
-    enabled: !!depositWallet,
+    queryKey: [REACT_QUERY_POLY_MARKET.CLOSED_POSITIONS, wallet],
+    queryFn: () => getPositions(wallet!, 'CLOSED'),
+    enabled: !!wallet,
     staleTime: 60_000,
   })
 }
 
-/**
- * Cash available to trade: pUSD held by the account wallet on Polygon.
- * (`/v2/value` only covers open positions, not cash.)
- */
+/** pUSD held by the account wallet — cash available to trade. */
 export function usePolyMarketCashBalance() {
-  const config = useConfig()
-  const { data: depositWallet } = usePolyMarketWalletAddress()
+  const { data: wallet } = usePolyMarketWalletAddress()
 
   return useQuery({
-    queryKey: [REACT_QUERY_POLY_MARKET.CASH_BALANCE, depositWallet],
-    queryFn: async (): Promise<number> => {
-      const balance = await readContract(config, {
-        chainId: polygon.id,
-        address: PUSD_ADDRESS,
-        abi: erc20Abi,
-        functionName: 'balanceOf',
-        args: [depositWallet as Address],
-      })
-
-      return Number(formatUnits(balance, TOKEN_DECIMALS))
-    },
-    enabled: !!depositWallet,
+    queryKey: [REACT_QUERY_POLY_MARKET.CASH_BALANCE, wallet],
+    queryFn: () => getCashBalance(wallet!),
+    enabled: !!wallet,
     staleTime: 30_000,
     refetchInterval: 60_000,
   })
 }
 
 export function usePolyMarketActivity(limit = 50) {
-  const { data: depositWallet } = usePolyMarketWalletAddress()
+  const { data: wallet } = usePolyMarketWalletAddress()
 
   return useQuery({
-    queryKey: [REACT_QUERY_POLY_MARKET.ACTIVITY, depositWallet, limit],
-    queryFn: (): Promise<{ items: ActivityItem[]; nextCursor: string | null }> => getActivity(depositWallet!, limit),
-    enabled: !!depositWallet,
+    queryKey: [REACT_QUERY_POLY_MARKET.ACTIVITY, wallet, limit],
+    queryFn: () => getActivity(wallet!, limit),
+    enabled: !!wallet,
     staleTime: 30_000,
     refetchInterval: 60_000,
   })
 }
 
 export function usePolyMarketUserStats() {
-  const { data: depositWallet } = usePolyMarketWalletAddress()
+  const { data: wallet } = usePolyMarketWalletAddress()
 
   return useQuery({
-    queryKey: [REACT_QUERY_POLY_MARKET.USER_STATS, depositWallet],
-    queryFn: (): Promise<UserStats | null> => getUserStats(depositWallet!),
-    enabled: !!depositWallet,
+    queryKey: [REACT_QUERY_POLY_MARKET.USER_STATS, wallet],
+    queryFn: () => getUserStats(wallet!),
+    enabled: !!wallet,
     staleTime: 3_600_000,
   })
-}
-
-/**
- * All wallet-derived queries for the currently connected account.
- * Returns null when disconnected.
- */
-export function usePolyMarketAccount() {
-  const { address } = useAppKitAccount()
-  const portfolio = usePolyMarketPortfolio()
-  const positions = usePolyMarketPositions()
-  const activity = usePolyMarketActivity()
-  const stats = usePolyMarketUserStats()
-
-  return {
-    address,
-    portfolio,
-    positions,
-    activity,
-    stats,
-  }
 }

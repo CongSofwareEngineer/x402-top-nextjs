@@ -1,37 +1,24 @@
 'use client'
 
-import type { Address, Hex } from 'viem'
-
 import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { REACT_QUERY_POLY_MARKET } from '@/constants/reactQuery'
-import {
-  createWithdrawalAddress,
-  getBridgeQuote,
-  getBridgeStatus,
-  getSupportedAssets,
-  type BridgeDepositResponse,
-  type BridgeQuote,
-  type BridgeQuoteRequest,
-  type BridgeStatusResponse,
-  type SupportedAsset,
-} from '@/services/polymarket'
-import { sleep } from '@/utils/functions'
+import { createWithdrawalAddress, getBridgeStatus, getSupportedAssets } from '@/services/polymarket'
 
 /** Assets accepted by the bridge (deposit/withdraw destinations). */
 export function useSupportedAssets() {
   return useQuery({
     queryKey: [REACT_QUERY_POLY_MARKET.SUPPORTED_ASSETS],
-    queryFn: (): Promise<SupportedAsset[]> => getSupportedAssets(),
+    queryFn: getSupportedAssets,
     staleTime: 3_600_000,
   })
 }
 
-/** Deposit/withdraw transactions observed at a wallet's bridge address. */
+/** Deposit/withdraw transactions observed at a bridge address. */
 export function useBridgeStatus(address: string | undefined) {
   return useQuery({
     queryKey: [REACT_QUERY_POLY_MARKET.BRIDGE_STATUS, address?.toLowerCase()],
-    queryFn: (): Promise<BridgeStatusResponse> => getBridgeStatus(address!),
+    queryFn: () => getBridgeStatus(address!),
     enabled: !!address,
     staleTime: 30_000,
     refetchInterval: 60_000,
@@ -43,20 +30,5 @@ export function useBridgeStatus(address: string | undefined) {
  * The transfer must be initiated from the Polymarket wallet itself.
  */
 export function useCreateWithdrawalAddress() {
-  return useMutation({
-    mutationFn: (params: {
-      address: string
-      toChainId: string
-      toTokenAddress: string
-      recipientAddr: string
-      builderCode?: string
-    }): Promise<BridgeDepositResponse> => createWithdrawalAddress(params),
-  })
-}
-
-/** Quote a deposit/withdrawal swap across chains. */
-export function useBridgeQuote() {
-  return useMutation({
-    mutationFn: (request: BridgeQuoteRequest): Promise<BridgeQuote> => getBridgeQuote(request),
-  })
+  return useMutation({ mutationFn: createWithdrawalAddress })
 }
