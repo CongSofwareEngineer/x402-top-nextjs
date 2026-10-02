@@ -4,11 +4,20 @@ import type { TradeSelection } from './TradeTab'
 
 import { useMemo, useState } from 'react'
 
-import { formatCents, formatChance, formatVolume } from './format'
+import { formatCents, formatChance, formatDate, formatVolume } from './format'
 
 import { usePolyMarketEvents } from '@/hooks/polymarket'
 import { getEventBySlug, marketLabel, outcomeQuotes, parsePolymarketUrl, yesChance, type Market, type PolyEvent } from '@/services/polymarket'
-import { MARKET_SORT_PRESETS, MARKETS_PAGE_SIZE, POLYMARKET_CATEGORIES, type MarketSortKey } from '@/constants/polymarket'
+import {
+  EXPIRY_SORT_EXCLUDED_TAG_IDS,
+  EXPIRY_SORT_OPTIONS,
+  EXPIRY_SORT_ORDER,
+  MARKET_SORT_PRESETS,
+  MARKETS_PAGE_SIZE,
+  POLYMARKET_CATEGORIES,
+  type ExpirySortKey,
+  type MarketSortKey,
+} from '@/constants/polymarket'
 
 interface MarketsTabProps {
   onSelect: (selection: TradeSelection) => void
@@ -17,21 +26,27 @@ interface MarketsTabProps {
 export function MarketsTab({ onSelect }: MarketsTabProps) {
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined)
   const [sortKey, setSortKey] = useState<MarketSortKey>('trending')
+  // End-date sort picked from the select — overrides the preset chips while set.
+  const [expirySort, setExpirySort] = useState<ExpirySortKey | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [linkError, setLinkError] = useState<string | null>(null)
   const [linkLoading, setLinkLoading] = useState(false)
 
   const queryFilters = useMemo(() => {
     const preset = MARKET_SORT_PRESETS.find((p) => p.key === sortKey) ?? MARKET_SORT_PRESETS[0]
+    const expiry = EXPIRY_SORT_OPTIONS.find((o) => o.key === expirySort)
 
     return {
       closed: false,
       limit: MARKETS_PAGE_SIZE,
-      sort: preset.order,
-      ascending: preset.ascending,
+      sort: expiry ? EXPIRY_SORT_ORDER : preset.order,
+      ascending: expiry ? expiry.ascending : preset.ascending,
       tagId: categoryId,
+      // Skip events already past their end date (still open, awaiting resolution).
+      endDateMin: expiry ? new Date().toISOString() : undefined,
+      excludeTagIds: expiry ? EXPIRY_SORT_EXCLUDED_TAG_IDS : undefined,
     }
-  }, [sortKey, categoryId])
+  }, [sortKey, expirySort, categoryId])
 
   const { data, isLoading, error, refetch, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } = usePolyMarketEvents(queryFilters)
 
@@ -119,12 +134,38 @@ export function MarketsTab({ onSelect }: MarketsTabProps) {
         </button>
       </div>
 
-      <div className='flex flex-wrap gap-2'>
+      <div className='flex flex-wrap items-center gap-2'>
         {MARKET_SORT_PRESETS.map((preset) => (
-          <FilterChip key={preset.key} active={sortKey === preset.key} onClick={() => setSortKey(preset.key)}>
+          <FilterChip
+            key={preset.key}
+            active={!expirySort && sortKey === preset.key}
+            onClick={() => {
+              setSortKey(preset.key)
+              setExpirySort(null)
+            }}
+          >
             {preset.label}
           </FilterChip>
         ))}
+        <select
+          aria-label='Sort by end date'
+          value={expirySort ?? ''}
+          onChange={(e) => setExpirySort((e.target.value as ExpirySortKey) || null)}
+          className={`px-3 py-1.5 text-sm font-medium rounded-full border cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            expirySort
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-400'
+          }`}
+        >
+          <option value='' className='bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'>
+            End date: Any
+          </option>
+          {EXPIRY_SORT_OPTIONS.map((o) => (
+            <option key={o.key} value={o.key} className='bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'>
+              End date: {o.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className='flex flex-wrap gap-2'>
@@ -238,9 +279,9 @@ function EventCard({ event, onSelect }: { event: PolyEvent; onSelect: (selection
         )}
       </div>
 
-      <div className='flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-2'>
+      <div className='flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-4'>
         <span>{formatVolume(event.volume)} Vol.</span>
-        {event.endDate && <span>{new Date(event.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
+        {event.endDate && <span className='text-orange-500'>Ends {formatDate(event.endDate)}</span>}
       </div>
     </div>
   )

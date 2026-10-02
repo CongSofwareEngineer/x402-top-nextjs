@@ -5,6 +5,8 @@ import type { ActivityItem } from '@/services/polymarket'
 import { useState } from 'react'
 import { useAppKitAccount } from '@reown/appkit/react'
 
+import { formatDateTime } from './format'
+
 import { useCancelOrder, usePolymarketCredentials, usePolyMarketActivity, usePolyMarketOpenOrders } from '@/hooks/polymarket'
 import { EXPLORERS } from '@/constants/polymarket'
 
@@ -42,15 +44,6 @@ export function HistoryTab({ onTrade }: { onTrade: (item: ActivityItem) => void 
       </div>
     )
   }
-
-  const formatDate = (timestamp: number) =>
-    new Date(timestamp).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
 
   const handleCancelOrder = (orderId: string) => {
     if (window.confirm('Are you sure you want to cancel this order?')) {
@@ -176,7 +169,7 @@ export function HistoryTab({ onTrade }: { onTrade: (item: ActivityItem) => void 
                           <td className='px-4 py-3 text-sm text-gray-900 dark:text-white'>${trade.price.toFixed(4)}</td>
                           <td className='px-4 py-3 text-sm text-gray-900 dark:text-white'>{formatNumber(trade.size)}</td>
                           <td className='px-4 py-3 text-sm font-medium text-gray-900 dark:text-white'>{formatCurrency(trade.usdcSize)}</td>
-                          <td className='px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap'>{formatDate(trade.timestamp)}</td>
+                          <td className='px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap'>{formatDateTime(trade.timestamp)}</td>
                           <td className='px-4 py-3'>
                             {trade.transactionHash ? (
                               <a
@@ -244,7 +237,7 @@ export function HistoryTab({ onTrade }: { onTrade: (item: ActivityItem) => void 
                 <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
                   {orders.map((order) => (
                     <tr key={order.id} className='hover:bg-gray-50 dark:hover:bg-gray-800/50'>
-                      <td className='px-6 py-4 text-sm text-gray-900 dark:text-white'>{formatDate(order.createdAt)}</td>
+                      <td className='px-6 py-4 text-sm text-gray-900 dark:text-white'>{formatDateTime(order.createdAt)}</td>
                       <td className='px-6 py-4'>
                         <div className='text-sm font-mono text-gray-900 dark:text-white truncate max-w-xs' title={order.market}>
                           {order.market.slice(0, 10)}...

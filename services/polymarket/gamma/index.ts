@@ -102,6 +102,8 @@ export async function listEvents(filters: MarketFilters = {}): Promise<EventsRes
   if (filters.limit != null) params.set('limit', String(filters.limit))
   if (filters.cursor) params.set('after_cursor', filters.cursor)
   if (filters.tagId) params.set('tag_id', filters.tagId)
+  if (filters.endDateMin) params.set('end_date_min', filters.endDateMin)
+  filters.excludeTagIds?.forEach((id) => params.append('exclude_tag_id', id))
 
   const data = await requestJson<{ events: GammaEventRow[]; next_cursor?: string }>(baseUrl('GAMMA'), `/events/keyset?${params.toString()}`)
 

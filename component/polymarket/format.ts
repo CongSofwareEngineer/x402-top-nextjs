@@ -31,3 +31,23 @@ export function formatCents(price: number) {
 }
 
 export const formatSignedUsd = (value: number) => `${value >= 0 ? '+' : '-'}${formatUsd(Math.abs(value))}`
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/** Date (ISO string / ms / Date) → `DD/MM/YYYY` in local time; empty for invalid input. */
+export function formatDate(value: string | number | Date) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return ''
+
+  return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()}`
+}
+
+/** Date → `DD/MM/YYYY HH:mm` in local time; empty for invalid input. */
+export function formatDateTime(value: string | number | Date) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return ''
+
+  return `${formatDate(date)} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+}

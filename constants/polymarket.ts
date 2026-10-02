@@ -30,7 +30,7 @@ export const POLYMARKET_CATEGORIES = [
   { id: '315', label: 'Entertainment' },
 ] as const
 
-export type MarketSortKey = 'trending' | 'new' | 'volume' | 'liquidity' | 'endingSoon' | 'competitive'
+export type MarketSortKey = 'trending' | 'new' | 'volume' | 'liquidity' | 'competitive'
 
 /**
  * Gallery sort presets matching Polymarket homepage views.
@@ -41,11 +41,31 @@ export const MARKET_SORT_PRESETS: { key: MarketSortKey; label: string; order: st
   { key: 'new', label: 'New', order: 'startDate', ascending: false },
   { key: 'volume', label: 'Volume', order: 'volume', ascending: false },
   { key: 'liquidity', label: 'Liquidity', order: 'liquidity', ascending: false },
-  { key: 'endingSoon', label: 'Ending Soon', order: 'endDate', ascending: true },
   { key: 'competitive', label: 'Competitive', order: 'competitive', ascending: false },
 ]
 
-export const MARKETS_PAGE_SIZE = 24
+/** Gamma order field for the end-date (expiry) sort. */
+export const EXPIRY_SORT_ORDER = 'endDate'
+
+/**
+ * Gamma tags hidden from the end-date sort. `up-or-down` = recurring 5m/15m crypto
+ * Up/Down events: they flood the soonest-ending pages but have no Yes/No market,
+ * so the SDK drops them all and the gallery comes back empty.
+ */
+export const EXPIRY_SORT_EXCLUDED_TAG_IDS = ['102127']
+
+export type ExpirySortKey = 'endingSoon' | 'endingLatest'
+
+/**
+ * End-date sort select options. When one is picked it overrides the preset chips,
+ * and events whose `endDate` already passed (open, awaiting resolution) are hidden.
+ */
+export const EXPIRY_SORT_OPTIONS: { key: ExpirySortKey; label: string; ascending: boolean }[] = [
+  { key: 'endingSoon', label: 'Ending soonest', ascending: true },
+  { key: 'endingLatest', label: 'Ending latest', ascending: false },
+]
+
+export const MARKETS_PAGE_SIZE = 50
 
 /** Explorer links. */
 export const EXPLORERS = {

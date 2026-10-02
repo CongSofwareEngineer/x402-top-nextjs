@@ -4,7 +4,7 @@ import type { Market, MarketOrderInput, MarketQuote, OrderBook, OrderSide, PolyE
 
 import { useState } from 'react'
 
-import { formatCents, formatChance, formatUsd, formatVolume } from './format'
+import { formatCents, formatChance, formatDate, formatUsd, formatVolume } from './format'
 
 import { usePlaceMarketOrder, usePolymarketOnboarding, usePolyMarketEvent, usePolyMarketOrderBook, usePolyMarketPositions } from '@/hooks/polymarket'
 import {
@@ -111,7 +111,7 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
               <h2 className='text-xl font-bold text-gray-900 dark:text-white'>{event.title}</h2>
               <div className='flex flex-wrap gap-x-4 text-sm text-gray-500 dark:text-gray-400 mt-1'>
                 <span>{formatVolume(event.volume)} Vol.</span>
-                {event.endDate && <span>Ends {new Date(event.endDate).toLocaleDateString()}</span>}
+                {(market.endDate || event.endDate) && <span>Ends {formatDate((market.endDate || event.endDate)!)}</span>}
               </div>
             </div>
           </div>
@@ -325,7 +325,9 @@ function MarketRow({
     <div className={`flex items-center gap-3 py-3 px-2 rounded-lg ${selected ? 'bg-gray-50 dark:bg-gray-900/40' : ''}`}>
       <div className='flex-1 min-w-0'>
         <div className='font-medium text-gray-900 dark:text-white truncate'>{marketLabel(market)}</div>
-        <div className='text-xs text-gray-500 dark:text-gray-400'>{formatVolume(market.volume)} Vol.</div>
+        <div className='text-xs text-gray-500 dark:text-gray-400'>
+          {formatVolume(market.volume)} Vol.{market.endDate && ` · Ends ${formatDate(market.endDate)}`}
+        </div>
       </div>
       <div className='text-xl font-bold text-gray-900 dark:text-white w-16 text-right'>{formatChance(yesChance(market))}</div>
       <button

@@ -76,6 +76,10 @@ export interface MarketFilters {
   /** Gamma `/events/keyset` order field, e.g. `volume24hr`, `volume`, `liquidity`, `startDate`, `endDate`, `competitive`. */
   sort?: string
   ascending?: boolean
+  /** ISO date — only events ending at/after this time (Gamma `end_date_min`). */
+  endDateMin?: string
+  /** Gamma tag ids to leave out (`exclude_tag_id`, repeated). */
+  excludeTagIds?: string[]
 }
 
 /** Normalized Gamma event — only binary (Yes/No) open markets are kept. */

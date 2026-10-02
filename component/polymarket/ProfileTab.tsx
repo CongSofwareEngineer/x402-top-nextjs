@@ -6,6 +6,7 @@ import { isAddress } from 'viem'
 
 import { DepositCard } from './DepositCard'
 import { PositionsPanel } from './PositionsPanel'
+import { formatDate } from './format'
 
 import {
   useBridgeStatus,
@@ -54,7 +55,7 @@ export function ProfileTab() {
     profile?.name ||
     profile?.pseudonym ||
     (onboarding.wallet ? `${onboarding.wallet.slice(0, 6)}...${onboarding.wallet.slice(-4)}` : 'Unnamed profile')
-  const joinedAt = stats?.joinDate ? new Date(stats.joinDate * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : null
+  const joinedAt = stats?.joinDate ? formatDate(stats.joinDate * 1000) : null
 
   if (!isConnected) {
     return (
