@@ -11,6 +11,11 @@ export function formatVolume(num: number) {
   return `$${Math.round(num)}`
 }
 
+/** Full volume rounded to whole dollars: `2931.378` → `$2,931`. */
+export function formatVolumeFull(num: number) {
+  return `$${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+}
+
 export function formatUsd(num: number) {
   return `$${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
