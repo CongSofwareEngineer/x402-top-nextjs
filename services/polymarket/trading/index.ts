@@ -65,6 +65,10 @@ export async function fetchTradingApprovalsState(wallet: string) {
  * Grant every trading approval of `wallet`: the SDK batch, then the missing
  * NegRiskAdapter approvals (one gasless transaction each). Finally refreshes the
  * CLOB's cached pUSD allowance, otherwise orders keep failing with "allowance: 0".
+ *
+ * The SDK batch also enables auto-redeem (AutoRedeemOperator as operator of the
+ * CTF + PositionManager tokens), so resolved winnings are claimed without the
+ * user pressing Claim; `isFullyApproved` stays false until it is granted.
  */
 export async function setupTradingApprovals(client: TradingClient, wallet: string) {
   await client.setupTradingApprovals()

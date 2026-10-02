@@ -51,7 +51,7 @@ export function usePolymarketOnboarding() {
   const enableTrading = useMutation({ mutationFn: () => getClient({ fresh: true }) })
 
   const approveAll = useMutation({
-    // Checks on-chain state and submits only missing approvals (incl. NegRiskAdapter); waits for confirmation.
+    // Checks on-chain state and submits only missing approvals (incl. NegRiskAdapter + auto-redeem); waits for confirmation.
     mutationFn: async () => {
       if (!accountWallet?.address) throw new Error('Wallet not connected')
 
