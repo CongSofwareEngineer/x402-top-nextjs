@@ -169,7 +169,9 @@ export function HistoryTab({ onTrade }: { onTrade: (item: ActivityItem) => void 
                           <td className='px-4 py-3 text-sm text-gray-900 dark:text-white'>${trade.price.toFixed(4)}</td>
                           <td className='px-4 py-3 text-sm text-gray-900 dark:text-white'>{formatNumber(trade.size)}</td>
                           <td className='px-4 py-3 text-sm font-medium text-gray-900 dark:text-white'>{formatCurrency(trade.usdcSize)}</td>
-                          <td className='px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap'>{formatDateTime(trade.timestamp)}</td>
+                          <td className='px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap'>
+                            {formatDateTime(trade.timestamp * 1000)}
+                          </td>
                           <td className='px-4 py-3'>
                             {trade.transactionHash ? (
                               <a

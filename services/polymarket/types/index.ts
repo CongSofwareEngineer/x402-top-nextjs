@@ -147,6 +147,7 @@ export interface Position {
 /** Data API v2 — `GET /v2/activity` row. */
 export interface ActivityItem {
   proxyWallet: Address
+  /** Epoch seconds. */
   timestamp: number
   type: string
   size: number

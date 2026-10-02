@@ -65,6 +65,9 @@ export const EXPIRY_SORT_OPTIONS: { key: ExpirySortKey; label: string; ascending
   { key: 'endingLatest', label: 'Ending latest', ascending: false },
 ]
 
+/** Timezone every date in the Polymarket UI is shown in (API dates are UTC). */
+export const DISPLAY_TIME_ZONE = 'Asia/Ho_Chi_Minh'
+
 /** Slippage tolerance buttons on the trade panel (0..1). Default is the SDK's `MARKET_ORDER_SLIPPAGE`. */
 export const SLIPPAGE_OPTIONS = [0.02, 0.05, 0.1]
 
