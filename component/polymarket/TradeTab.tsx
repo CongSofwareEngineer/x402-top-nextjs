@@ -7,9 +7,12 @@ import { useState } from 'react'
 import { formatCents, formatChance, formatDate, formatUsd, formatVolume } from './format'
 
 import { usePlaceMarketOrder, usePolymarketOnboarding, usePolyMarketEvent, usePolyMarketOrderBook, usePolyMarketPositions } from '@/hooks/polymarket'
+import { SLIPPAGE_OPTIONS } from '@/constants/polymarket'
 import {
   ceil2,
   floor2,
+  MARKET_ORDER_SLIPPAGE,
+  MIN_MARKET_ORDER_USD,
   marketLabel,
   ONBOARDING_STEP,
   ORDER_SIDE,
@@ -17,6 +20,7 @@ import {
   prepareMarketOrder,
   quoteMarketOrder,
   quoteSellShares,
+  slippagePrice,
   yesChance,
 } from '@/services/polymarket'
 
@@ -39,6 +43,7 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
   const [side, setSide] = useState<OrderSide>(ORDER_SIDE.BUY)
   const [amount, setAmount] = useState('')
   const [sellAll, setSellAll] = useState(false)
+  const [slippage, setSlippage] = useState(MARKET_ORDER_SLIPPAGE)
   const [formError, setFormError] = useState<string | null>(null)
 
   const market = event.markets.find((m) => m.id === marketId) ?? selection.event.markets.find((m) => m.id === marketId) ?? event.markets[0]
@@ -85,7 +90,7 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
 
     // Re-quote against a fresh book so the price limit matches what fills now.
     const { data: book } = await refetchBook()
-    const prepared = prepareMarketOrder(tokenId, book ?? orderBook, input)
+    const prepared = prepareMarketOrder(tokenId, book ?? orderBook, input, slippage)
 
     if ('error' in prepared) return setFormError(prepared.error)
     placeOrder(prepared.order, { onSuccess: () => setAmount('') })
@@ -97,6 +102,8 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
 
   const quotes = outcomeQuotes(market, side)
   const isBuy = side === ORDER_SIDE.BUY
+  // Same rule as `prepareMarketOrder` (amount truncated to cents) — surfaced before submit.
+  const belowMinBuy = isBuy && usd > 0 && floor2(usd) < MIN_MARKET_ORDER_USD
 
   return (
     <div className='grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto'>
@@ -189,6 +196,7 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
             <div className='flex items-center justify-between mb-2'>
               <div>
                 <div className='text-sm font-medium text-gray-900 dark:text-white'>Amount</div>
+                {isBuy && <div className='text-xs text-gray-500 dark:text-gray-400'>Min. {formatUsd(MIN_MARKET_ORDER_USD)}</div>}
                 {!isBuy && (
                   <div className='text-xs text-gray-500 dark:text-gray-400'>
                     You hold {heldShares.toFixed(2)} {outcomeName}
@@ -227,8 +235,20 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
               </PresetButton>
             </div>
 
-            <QuoteSummary quote={quote} side={side} />
+            <div className='flex items-center justify-between mb-4'>
+              <span className='text-sm text-gray-500 dark:text-gray-400'>Slippage</span>
+              <div className='flex gap-2'>
+                {SLIPPAGE_OPTIONS.map((s) => (
+                  <PresetButton key={s} active={slippage === s} onClick={() => setSlippage(s)}>
+                    {s * 100}%
+                  </PresetButton>
+                ))}
+              </div>
+            </div>
 
+            <QuoteSummary quote={quote} side={side} slippage={slippage} tickSize={orderBook?.tickSize} />
+
+            {belowMinBuy && <p className='text-sm text-amber-600 mb-3'>Minimum buy amount is {formatUsd(MIN_MARKET_ORDER_USD)}.</p>}
             {formError && <p className='text-sm text-red-500 mb-3'>{formError}</p>}
             {orderError && <p className='text-sm text-red-500 mb-3 break-words'>{orderError.message}</p>}
             {orderResult && (
@@ -239,7 +259,7 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
 
             <button
               onClick={submit}
-              disabled={orderPending || !quote}
+              disabled={orderPending || !quote || belowMinBuy}
               className={`w-full px-4 py-3 rounded-lg text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${
                 outcomeIndex === 0 ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
               }`}
@@ -263,18 +283,42 @@ function toOrderInput(side: OrderSide, usd: number, sellAll: boolean, heldShares
   return { side: ORDER_SIDE.SELL, usd: amount, heldShares }
 }
 
-function QuoteSummary({ quote, side }: { quote: MarketQuote | null; side: OrderSide }) {
+function QuoteSummary({
+  quote,
+  side,
+  slippage,
+  tickSize,
+}: {
+  quote: MarketQuote | null
+  side: OrderSide
+  slippage: number
+  tickSize: number | undefined
+}) {
   const isBuy = side === ORDER_SIDE.BUY
+  // Worst price the order accepts — same limit `prepareMarketOrder` sends.
+  const limit = quote && tickSize ? slippagePrice(quote.worstPrice, tickSize, side, slippage) : null
   const rows = quote
     ? isBuy
       ? [
           ['Avg. price', formatCents(quote.avgPrice)],
           ['Shares', quote.shares.toFixed(2)],
           ['Potential return', `${(((quote.shares - quote.usd) / quote.usd) * 100).toFixed(0)}%`],
+          ...(limit
+            ? [
+                [`Max price (${slippage * 100}% slippage)`, formatCents(limit)],
+                ['Min. shares', (quote.usd / limit).toFixed(2)],
+              ]
+            : []),
         ]
       : [
           ['Avg. price', formatCents(quote.avgPrice)],
           ['Shares to sell', ceil2(quote.shares).toFixed(2)],
+          ...(limit
+            ? [
+                [`Min price (${slippage * 100}% slippage)`, formatCents(limit)],
+                ['Min. received', formatUsd(ceil2(quote.shares) * limit)],
+              ]
+            : []),
         ]
     : []
 
@@ -295,12 +339,26 @@ function QuoteSummary({ quote, side }: { quote: MarketQuote | null; side: OrderS
   )
 }
 
-function PresetButton({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+function PresetButton({
+  onClick,
+  disabled,
+  active,
+  children,
+}: {
+  onClick: () => void
+  disabled?: boolean
+  active?: boolean
+  children: React.ReactNode
+}) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className='px-2.5 py-1 text-xs font-medium rounded-md border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40'
+      className={`px-2.5 py-1 text-xs font-medium rounded-md border disabled:opacity-40 ${
+        active
+          ? 'bg-blue-600 text-white border-blue-600'
+          : 'border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+      }`}
     >
       {children}
     </button>

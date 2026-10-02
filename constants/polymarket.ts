@@ -65,6 +65,9 @@ export const EXPIRY_SORT_OPTIONS: { key: ExpirySortKey; label: string; ascending
   { key: 'endingLatest', label: 'Ending latest', ascending: false },
 ]
 
+/** Slippage tolerance buttons on the trade panel (0..1). Default is the SDK's `MARKET_ORDER_SLIPPAGE`. */
+export const SLIPPAGE_OPTIONS = [0.02, 0.05, 0.1]
+
 export const MARKETS_PAGE_SIZE = 50
 
 /** Explorer links. */

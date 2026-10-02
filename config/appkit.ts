@@ -11,7 +11,7 @@ if (!projectId) {
 }
 
 export const DEFAULT_NETWORK = polygon
-export const CHAIN_SUPPORT = [DEFAULT_NETWORK, bsc, base, optimism]
+export const CHAIN_SUPPORT = [DEFAULT_NETWORK]
 
 //Set up the Wagmi Adapter (Config)
 export const wagmiAdapter = new WagmiAdapter({

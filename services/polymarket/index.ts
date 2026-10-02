@@ -20,6 +20,7 @@ export {
   quoteSellShares,
   quoteMarketOrder,
   prepareMarketOrder,
+  slippagePrice,
   yesChance,
   outcomeQuotes,
   marketLabel,

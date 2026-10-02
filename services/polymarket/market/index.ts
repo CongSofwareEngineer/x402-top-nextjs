@@ -90,18 +90,18 @@ export function quoteMarketOrder(book: Pick<OrderBook, 'bids' | 'asks'> | undefi
 }
 
 /**
- * Price limit `MARKET_ORDER_SLIPPAGE` beyond the quoted worst level, snapped to
- * the tick (away from the quote) and kept inside the tradable range [tick, 1 - tick].
+ * Price limit `slippage` (0..1, default `MARKET_ORDER_SLIPPAGE`) beyond the quoted worst level,
+ * snapped to the tick (away from the quote) and kept inside the tradable range [tick, 1 - tick].
  */
-function slippagePrice(worstPrice: number, tickSize: number, side: OrderSide) {
+export function slippagePrice(worstPrice: number, tickSize: number, side: OrderSide, slippage = MARKET_ORDER_SLIPPAGE) {
   if (!(tickSize > 0)) return worstPrice
 
   const decimals = Math.max(0, Math.round(-Math.log10(tickSize)))
   const ticks = Math.round(worstPrice / tickSize)
   const limitTicks =
     side === ORDER_SIDE.BUY
-      ? Math.min(Math.ceil(ticks * (1 + MARKET_ORDER_SLIPPAGE) - EPSILON), Math.round(1 / tickSize) - 1)
-      : Math.max(Math.floor(ticks * (1 - MARKET_ORDER_SLIPPAGE) + EPSILON), 1)
+      ? Math.min(Math.ceil(ticks * (1 + slippage) - EPSILON), Math.round(1 / tickSize) - 1)
+      : Math.max(Math.floor(ticks * (1 - slippage) + EPSILON), 1)
 
   return Number((limitTicks * tickSize).toFixed(decimals))
 }
@@ -109,13 +109,14 @@ function slippagePrice(worstPrice: number, tickSize: number, side: OrderSide) {
 /**
  * Validate a market order against a (fresh) order book and build the request
  * for `placeMarketOrder`. The price limit is the worst level touched plus
- * `MARKET_ORDER_SLIPPAGE`, so a small book move between quote and match does
- * not kill the order, and it never fills worse than that.
+ * `slippage` (default `MARKET_ORDER_SLIPPAGE`), so a small book move between
+ * quote and match does not kill the order, and it never fills worse than that.
  */
 export function prepareMarketOrder(
   tokenId: string,
   book: Pick<OrderBook, 'bids' | 'asks' | 'tickSize'> | undefined,
-  input: MarketOrderInput
+  input: MarketOrderInput,
+  slippage = MARKET_ORDER_SLIPPAGE
 ): { order: MarketOrder; quote: MarketQuote } | { error: string } {
   const quote = quoteMarketOrder(book, input)
 
@@ -128,7 +129,10 @@ export function prepareMarketOrder(
 
     if (amount < MIN_MARKET_ORDER_USD) return { error: `Minimum order is $${MIN_MARKET_ORDER_USD}` }
 
-    return { quote, order: { tokenId, side: ORDER_SIDE.BUY, amount, maxPrice: slippagePrice(quote.worstPrice, book!.tickSize, ORDER_SIDE.BUY) } }
+    return {
+      quote,
+      order: { tokenId, side: ORDER_SIDE.BUY, amount, maxPrice: slippagePrice(quote.worstPrice, book!.tickSize, ORDER_SIDE.BUY, slippage) },
+    }
   }
 
   const held = input.heldShares
@@ -142,7 +146,10 @@ export function prepareMarketOrder(
 
   if (shares <= 0) return { error: 'Amount too small' }
 
-  return { quote, order: { tokenId, side: ORDER_SIDE.SELL, shares, minPrice: slippagePrice(quote.worstPrice, book!.tickSize, ORDER_SIDE.SELL) } }
+  return {
+    quote,
+    order: { tokenId, side: ORDER_SIDE.SELL, shares, minPrice: slippagePrice(quote.worstPrice, book!.tickSize, ORDER_SIDE.SELL, slippage) },
+  }
 }
 
 /** Implied probability of `Yes` (0..1). */
