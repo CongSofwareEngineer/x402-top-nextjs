@@ -1,7 +1,7 @@
 import { zeroAddress } from 'viem'
 
 import { baseUrl, requestJson } from '../client'
-import { BRIDGE_ADDRESS_TYPE_BY_CHAIN, NATIVE_TOKEN_PLACEHOLDER } from '../constants'
+import { BRIDGE_ADDRESS_TYPE_BY_CHAIN, BUILDER_CODE, NATIVE_TOKEN_PLACEHOLDER } from '../constants'
 import { type BridgeAddresses, type BridgeStatusResponse, type BridgeWithdrawResponse, type SupportedAsset } from '../types'
 
 /**
@@ -36,6 +36,7 @@ export function getDepositAddress(addresses: BridgeAddresses | undefined, chainI
 /**
  * `POST /withdraw` — bridge addresses configured for a specific withdrawal
  * destination. pUSD is then sent from the Polymarket wallet to `evm`.
+ * `X-Builder-Code` defaults to the app's `BUILDER_CODE` for attribution.
  */
 export async function createWithdrawalAddress(params: {
   address: string
@@ -46,7 +47,7 @@ export async function createWithdrawalAddress(params: {
 }): Promise<BridgeWithdrawResponse> {
   return requestJson<BridgeWithdrawResponse>(BRIDGE(), '/withdraw', {
     method: 'POST',
-    headers: params.builderCode ? { 'X-Builder-Code': params.builderCode } : undefined,
+    headers: { 'X-Builder-Code': params.builderCode ?? BUILDER_CODE },
     body: JSON.stringify({
       address: params.address,
       toChainId: params.toChainId,
