@@ -1,10 +1,9 @@
-import type { WalletClient } from 'viem'
-
+import { parseUnits, type WalletClient } from 'viem'
 import { createPublicClient, createSecureClient, OrderSide, OrderType, remoteBuilderSigning } from '@polymarket/client'
 import { signerFrom } from '@polymarket/client/viem'
 
 import { toNumber } from '../client'
-import { ORDER_SIDE, STORAGE_KEY_CLOB_CREDENTIALS } from '../constants'
+import { ORDER_SIDE, PUSD_ADDRESS, STORAGE_KEY_CLOB_CREDENTIALS, TOKEN_DECIMALS } from '../constants'
 import { type ClobCredentials, type MarketOrder, type OpenOrder } from '../types'
 
 export type TradingClient = Awaited<ReturnType<typeof createSecureClient>>
@@ -189,6 +188,23 @@ export async function redeemPositions(client: TradingClient, conditionIds: strin
   }
 
   return redeemed
+}
+
+/**
+ * Withdraw step 2: send `amount` pUSD from the account wallet to a bridge
+ * withdrawal address (`createWithdrawalAddress` → `address.evm`) as one
+ * gasless transaction. The bridge then forwards it to the destination chain.
+ * Resolves with the Polygon transaction hash once settled.
+ */
+export async function transferToBridge(client: TradingClient, params: { bridgeAddress: string; amount: string }): Promise<string> {
+  const handle = await client.transferErc20({
+    amount: parseUnits(params.amount, TOKEN_DECIMALS),
+    recipientAddress: params.bridgeAddress,
+    tokenAddress: PUSD_ADDRESS,
+  })
+  const { transactionHash } = await handle.wait()
+
+  return transactionHash
 }
 
 /* ------------------------------------------------------------ onboarding */

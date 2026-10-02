@@ -34,6 +34,7 @@ export {
   listOpenOrders,
   cancelOrder,
   redeemPositions,
+  transferToBridge,
   getOnboardingStep,
   ONBOARDING_STEP,
   type OnboardingStep,

@@ -9,7 +9,6 @@ import { PositionsPanel } from './PositionsPanel'
 
 import {
   useBridgeStatus,
-  useCreateWithdrawalAddress,
   usePolyMarketCashBalance,
   usePolyMarketPortfolio,
   usePolyMarketPositions,
@@ -17,6 +16,7 @@ import {
   usePolyMarketUserStats,
   usePolymarketOnboarding,
   useSupportedAssets,
+  useWithdraw,
 } from '@/hooks/polymarket'
 import { useWalletBalance } from '@/hooks/useWalletBalance'
 import { EXPLORERS } from '@/constants/polymarket'
@@ -36,17 +36,14 @@ export function ProfileTab() {
   const { data: supportedAssets = [] } = useSupportedAssets()
   const onboarding = usePolymarketOnboarding()
 
-  const {
-    mutate: createWithdrawal,
-    reset: resetWithdrawal,
-    isPending: withdrawalPending,
-    error: withdrawalError,
-    data: withdrawal,
-  } = useCreateWithdrawalAddress()
+  const { mutate: withdraw, reset: resetWithdrawal, isPending: withdrawalPending, error: withdrawalError, data: withdrawal } = useWithdraw()
   const [withdrawChainId, setWithdrawChainId] = useState('8453')
   const [recipientInput, setRecipientInput] = useState('')
+  const [withdrawAmount, setWithdrawAmount] = useState('')
+  // Bridge progress of the pUSD sent to the withdrawal address.
+  const { data: withdrawalStatus } = useBridgeStatus(withdrawal?.bridgeAddress)
+  const withdrawalTx = withdrawalStatus?.transactions[0]
 
-  const withdrawalAddress = withdrawal?.address?.evm
   // `/v2/value` = open positions only; polymarket.com's Portfolio = positions + cash.
   const positionsValue = portfolio?.value ?? positions.reduce((sum, p) => sum + p.currentValue, 0)
   const portfolioValue = positionsValue + (cash ?? 0)
@@ -101,13 +98,25 @@ export function ProfileTab() {
     resetWithdrawal()
   }
 
-  const handleCreateWithdrawal = () => {
-    if (!onboarding.wallet || !selectedAsset || recipientError) return
-    createWithdrawal({
+  const amount = Number(withdrawAmount)
+  const amountError = !withdrawAmount
+    ? null
+    : !(amount > 0)
+      ? 'Enter a valid amount'
+      : selectedAsset && amount < selectedAsset.minCheckoutUsd
+        ? `Minimum is $${selectedAsset.minCheckoutUsd.toFixed(2)}`
+        : amount > (cash ?? 0)
+          ? 'Insufficient pUSD balance'
+          : null
+
+  const handleWithdraw = () => {
+    if (!onboarding.wallet || !selectedAsset || recipientError || !withdrawAmount || amountError) return
+    withdraw({
       address: onboarding.wallet,
       toChainId: withdrawChainId,
       toTokenAddress: selectedAsset.token.address,
       recipientAddr: recipient,
+      amount: withdrawAmount.trim(),
     })
   }
 
@@ -245,7 +254,7 @@ export function ProfileTab() {
               Withdraw USDC
             </h3>
             <p className='text-sm text-gray-500 dark:text-gray-400 mb-4'>
-              Create a withdrawal destination, then send pUSD from your Polymarket wallet to the address below.
+              Send pUSD from your Polymarket wallet through the bridge. One gasless signature, then the bridge delivers it on the destination chain.
             </p>
             <div className='space-y-4'>
               <div>
@@ -291,31 +300,62 @@ export function ProfileTab() {
                 </p>
                 {recipientInput && recipientError && <p className='mt-1 text-xs text-red-500'>{recipientError}</p>}
               </div>
+              <div>
+                <div className='flex items-center justify-between mb-1'>
+                  <label className='block text-sm font-medium text-gray-700 dark:text-gray-300'>Amount (pUSD)</label>
+                  <button
+                    type='button'
+                    onClick={() => setWithdrawAmount(String(cash ?? 0))}
+                    disabled={!cash}
+                    className='text-xs text-green-600 dark:text-green-400 hover:underline disabled:opacity-50 disabled:no-underline'
+                  >
+                    Max {formatCurrency(cash ?? 0)}
+                  </button>
+                </div>
+                <input
+                  type='number'
+                  inputMode='decimal'
+                  min={0}
+                  step='any'
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  placeholder='0.00'
+                  className='w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent'
+                />
+                {amountError && <p className='mt-1 text-xs text-red-500'>{amountError}</p>}
+              </div>
               {selectedAsset && (
                 <p className='text-xs text-gray-500 dark:text-gray-400'>
                   Withdrawing to {selectedAsset.chainName} as {selectedAsset.token.symbol} (min checkout ${selectedAsset.minCheckoutUsd.toFixed(2)})
                 </p>
               )}
               <button
-                onClick={handleCreateWithdrawal}
-                disabled={withdrawalPending || !selectedAsset || !!recipientError}
+                onClick={handleWithdraw}
+                disabled={withdrawalPending || !onboarding.wallet || !selectedAsset || !!recipientError || !withdrawAmount || !!amountError}
                 className='w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2'
               >
-                {withdrawalPending ? 'Creating destination...' : 'Create withdrawal destination'}
+                {withdrawalPending ? 'Withdrawing... confirm in your wallet' : 'Withdraw'}
               </button>
               {withdrawalError && <p className='text-sm text-red-500'>{withdrawalError.message}</p>}
-              {withdrawalAddress && (
-                <div className='bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700'>
-                  <label className='block text-xs text-gray-500 dark:text-gray-400 mb-1'>Withdrawal address (send pUSD here)</label>
-                  <div className='flex items-center gap-2'>
-                    <code className='flex-1 text-xs font-mono text-gray-900 dark:text-white break-all'>{withdrawalAddress}</code>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(withdrawalAddress)}
-                      className='px-2 py-1 text-xs text-green-600 dark:text-green-400 border border-green-300 dark:border-green-700 rounded hover:bg-green-50 dark:hover:bg-green-900/20 flex-shrink-0'
+              {withdrawal && (
+                <div className='bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700 space-y-1 text-xs'>
+                  <p className='text-gray-500 dark:text-gray-400'>
+                    pUSD sent to the bridge ·{' '}
+                    <a
+                      href={`${EXPLORERS.POLYGON}/tx/${withdrawal.transactionHash}`}
+                      target='_blank'
+                      rel='noreferrer'
+                      className='font-mono text-blue-600 dark:text-blue-400 hover:underline'
                     >
-                      Copy
-                    </button>
-                  </div>
+                      {withdrawal.transactionHash.slice(0, 10)}...{withdrawal.transactionHash.slice(-8)}
+                    </a>
+                  </p>
+                  <p className='text-gray-500 dark:text-gray-400'>
+                    Bridge status:{' '}
+                    <span className='px-2 py-0.5 font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 uppercase'>
+                      {withdrawalTx?.status ?? 'waiting'}
+                    </span>
+                  </p>
                 </div>
               )}
             </div>

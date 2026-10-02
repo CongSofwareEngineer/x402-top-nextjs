@@ -13,4 +13,4 @@ export {
   usePolyMarketUserStats,
 } from './account'
 export { usePolyMarketOpenOrders, usePlaceMarketOrder, useCancelOrder, useRedeemPositions } from './trading'
-export { useSupportedAssets, useBridgeStatus, useCreateWithdrawalAddress } from './bridge'
+export { useSupportedAssets, useBridgeStatus, useCreateWithdrawalAddress, useWithdraw } from './bridge'
