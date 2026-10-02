@@ -51,7 +51,6 @@ const DATE_PARTS_FORMAT = new Intl.DateTimeFormat('en-GB', {
   hour: '2-digit',
   minute: '2-digit',
   hourCycle: 'h23',
-  timeZoneName: 'shortOffset',
 })
 
 function dateParts(value: string | number | Date) {
@@ -69,9 +68,9 @@ export function formatDate(value: string | number | Date) {
   return p ? `${p.day}/${p.month}/${p.year}` : ''
 }
 
-/** Date → `DD/MM/YYYY HH:mm GMT+7` in `DISPLAY_TIME_ZONE`; empty for invalid input. */
+/** Date → `DD/MM/YYYY HH:mm` already shifted into `DISPLAY_TIME_ZONE` (no tz label); empty for invalid input. */
 export function formatDateTime(value: string | number | Date) {
   const p = dateParts(value)
 
-  return p ? `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute} ${p.timeZoneName}` : ''
+  return p ? `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}` : ''
 }

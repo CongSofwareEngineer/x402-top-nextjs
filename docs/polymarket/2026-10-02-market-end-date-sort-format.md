@@ -14,8 +14,8 @@
 3. Bấm một chip sort → reset select về "Any".
 4. `end_date_min` loại các event đã quá `endDate` nhưng chưa đóng (đang chờ resolve) — trước đây "Ending Soon" bị đẩy các event từ 2025 lên đầu.
 5. Gửi thêm `exclude_tag_id=102127` (tag `up-or-down`). Fix bug sort tăng dần ra list rỗng: các event sắp hết hạn gần như toàn là "Bitcoin/ETH… Up or Down" 5 phút, outcome là `Up`/`Down` (không phải Yes/No) nên SDK lọc bỏ hết 50 event của trang đầu → UI rỗng.
-6. Ngày hiển thị qua `formatDate` / `formatDateTime` trong `component/polymarket/format.ts`, luôn theo múi giờ `DISPLAY_TIME_ZONE` (`Asia/Ho_Chi_Minh`, GMT+7) bất kể máy người xem để múi giờ nào. Có giờ thì kèm nhãn múi giờ: `02/10/2026 14:00 GMT+7`.
-7. Data API trả ngày theo UTC (`...Z`), VD `2026-10-02T07:00:00Z` → hiển thị `02/10/2026 14:00 GMT+7`.
+6. Ngày hiển thị qua `formatDate` / `formatDateTime` trong `component/polymarket/format.ts`, luôn theo múi giờ `DISPLAY_TIME_ZONE` (`Asia/Ho_Chi_Minh`, GMT+7) bất kể máy người xem để múi giờ nào. Giờ đã được cộng sẵn sang GMT+7, **không** hiện nhãn múi giờ (user thường không hiểu nhãn `GMT+7`): `02/10/2026 14:00`.
+7. Data API trả ngày theo UTC (`...Z`), VD `2026-10-02T07:00:00Z` → hiển thị `02/10/2026 14:00`.
 8. Fix bug History: `/v2/activity` trả `timestamp` theo **giây**, trước đây đưa thẳng vào `new Date()` (hiểu là mili-giây) nên ra năm 1970 → giờ nhân `* 1000`.
 
 ## File liên quan
@@ -23,9 +23,9 @@
 - `services/polymarket/types/index.ts` — `MarketFilters.endDateMin`, `MarketFilters.excludeTagIds`.
 - `services/polymarket/gamma/index.ts` — gửi `end_date_min`, `exclude_tag_id` lên Gamma.
 - `component/polymarket/format.ts` — `formatDate`, `formatDateTime`.
-- `component/polymarket/MarketsTab.tsx` — select sort theo ngày hết hạn, card hiển thị "Ends DD/MM/YYYY HH:mm GMT+7".
+- `component/polymarket/MarketsTab.tsx` — select sort theo ngày hết hạn, card hiển thị "Ends DD/MM/YYYY HH:mm".
 - `component/polymarket/TradeTab.tsx` — header hiển thị `endDate` (kèm giờ) của market đang chọn (fallback event), mỗi market con hiển thị `endDate` (kèm giờ).
-- `component/polymarket/HistoryTab.tsx` — cột Date dùng `DD/MM/YYYY HH:mm GMT+7`, activity `timestamp` (giây) × 1000.
+- `component/polymarket/HistoryTab.tsx` — cột Date dùng `DD/MM/YYYY HH:mm`, activity `timestamp` (giây) × 1000.
 - `services/polymarket/types/index.ts` — ghi chú `ActivityItem.timestamp` là epoch giây.
 - `component/polymarket/ProfileTab.tsx` — ngày tham gia dùng `DD/MM/YYYY`.
 
