@@ -6,7 +6,7 @@
 ## Mục đích
 - Cho user sắp xếp market theo ngày hết hạn (`endDate`) bằng một select riêng, dễ chọn hơn chip.
 - Thống nhất format ngày `DD/MM/YYYY` (có giờ thì `DD/MM/YYYY HH:mm`) ở mọi nơi trong module Polymarket.
-- Hiển thị `endDate` ở cả trang list (card) và trang chi tiết (header + từng market con).
+- Hiển thị `endDate` kèm giờ (`DD/MM/YYYY HH:mm`) ở cả trang list (card) và trang chi tiết (header + từng market con) để tester dễ kiểm tra.
 
 ## Luồng xử lý
 1. Chip "Ending Soon" được chuyển vào select "End date" (Any / Ending soonest / Ending latest).
@@ -21,8 +21,8 @@
 - `services/polymarket/types/index.ts` — `MarketFilters.endDateMin`, `MarketFilters.excludeTagIds`.
 - `services/polymarket/gamma/index.ts` — gửi `end_date_min`, `exclude_tag_id` lên Gamma.
 - `component/polymarket/format.ts` — `formatDate`, `formatDateTime`.
-- `component/polymarket/MarketsTab.tsx` — select sort theo ngày hết hạn, card hiển thị "Ends DD/MM/YYYY".
-- `component/polymarket/TradeTab.tsx` — header hiển thị `endDate` của market đang chọn (fallback event), mỗi market con hiển thị `endDate`.
+- `component/polymarket/MarketsTab.tsx` — select sort theo ngày hết hạn, card hiển thị "Ends DD/MM/YYYY HH:mm".
+- `component/polymarket/TradeTab.tsx` — header hiển thị `endDate` (kèm giờ) của market đang chọn (fallback event), mỗi market con hiển thị `endDate` (kèm giờ).
 - `component/polymarket/HistoryTab.tsx` — cột Date dùng `DD/MM/YYYY HH:mm`.
 - `component/polymarket/ProfileTab.tsx` — ngày tham gia dùng `DD/MM/YYYY`.
 

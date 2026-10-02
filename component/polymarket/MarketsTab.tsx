@@ -4,7 +4,7 @@ import type { TradeSelection } from './TradeTab'
 
 import { useMemo, useState } from 'react'
 
-import { formatCents, formatChance, formatDate, formatVolume } from './format'
+import { formatCents, formatChance, formatDateTime, formatVolume } from './format'
 
 import { usePolyMarketEvents } from '@/hooks/polymarket'
 import { getEventBySlug, marketLabel, outcomeQuotes, parsePolymarketUrl, yesChance, type Market, type PolyEvent } from '@/services/polymarket'
@@ -281,7 +281,7 @@ function EventCard({ event, onSelect }: { event: PolyEvent; onSelect: (selection
 
       <div className='flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-4'>
         <span>{formatVolume(event.volume)} Vol.</span>
-        {event.endDate && <span className='text-orange-500'>Ends {formatDate(event.endDate)}</span>}
+        {event.endDate && <span className='text-orange-500'>Ends {formatDateTime(event.endDate)}</span>}
       </div>
     </div>
   )
