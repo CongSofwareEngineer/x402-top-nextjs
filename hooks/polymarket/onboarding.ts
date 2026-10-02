@@ -8,7 +8,7 @@ import { usePolymarketCredentials, usePolymarketTradingClient } from './session'
 
 import { POLYMARKET_ROUTES } from '@/constants/polymarket'
 import { REACT_QUERY_POLY_MARKET } from '@/constants/reactQuery'
-import { fetchTradingApprovalsState, getOnboardingStep, requestDeployDepositWallet } from '@/services/polymarket'
+import { fetchTradingApprovalsState, getOnboardingStep, requestDeployDepositWallet, setupTradingApprovals } from '@/services/polymarket'
 
 /** On-chain trading approval state of the account wallet. */
 export function usePolyMarketTradingApprovals() {
@@ -51,8 +51,12 @@ export function usePolymarketOnboarding() {
   const enableTrading = useMutation({ mutationFn: () => getClient({ fresh: true }) })
 
   const approveAll = useMutation({
-    // Checks on-chain state and submits only missing approvals; waits for confirmation.
-    mutationFn: async () => (await getClient()).setupTradingApprovals(),
+    // Checks on-chain state and submits only missing approvals (incl. NegRiskAdapter); waits for confirmation.
+    mutationFn: async () => {
+      if (!accountWallet?.address) throw new Error('Wallet not connected')
+
+      return setupTradingApprovals(await getClient(), accountWallet.address)
+    },
     onSettled: () => queryClient.invalidateQueries({ queryKey: [REACT_QUERY_POLY_MARKET.TRADING_APPROVALS] }),
   })
 

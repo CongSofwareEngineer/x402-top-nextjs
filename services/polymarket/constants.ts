@@ -32,6 +32,9 @@ export const TOKEN_DECIMALS = 6
 /** Smallest USDC amount the CLOB accepts for a market BUY. */
 export const MIN_MARKET_ORDER_USD = 1
 
+/** Max price move a market order tolerates beyond the quoted worst level (5%). */
+export const MARKET_ORDER_SLIPPAGE = 0.05
+
 export const ORDER_SIDE = {
   BUY: 'BUY',
   SELL: 'SELL',
@@ -41,6 +44,15 @@ export const CONTRACTS = {
   DepositWalletFactory: '0x00000000000Fb5C9ADea0298D729A0CB3823Cc07',
   DepositWalletImplementation: '0x58CA52ebe0DadfdF531Cde7062e76746de4Db1eB',
   SafeFactory: '0xaacFeEa03eb1561C4e67d661e40682Bd20E3541b',
+  ConditionalTokens: '0x4D97DCd97eC945f40cF65F87097ACe5EA0476045',
+  /** The CLOB checks pUSD allowance + CTF operator approval for it on neg-risk orders. */
+  NegRiskAdapter: '0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296',
+} as const
+
+/** CLOB `/balance-allowance` asset types (SDK `AssetType`). */
+export const CLOB_ASSET_TYPE = {
+  COLLATERAL: 'COLLATERAL',
+  CONDITIONAL: 'CONDITIONAL',
 } as const
 
 /** `beacon()` selector on the Deposit Wallet factory. */

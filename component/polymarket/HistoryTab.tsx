@@ -1,12 +1,19 @@
 'use client'
 
+import type { ActivityItem } from '@/services/polymarket'
+
 import { useState } from 'react'
 import { useAppKitAccount } from '@reown/appkit/react'
 
 import { useCancelOrder, usePolymarketCredentials, usePolyMarketActivity, usePolyMarketOpenOrders } from '@/hooks/polymarket'
 import { EXPLORERS } from '@/constants/polymarket'
 
-export function HistoryTab() {
+/** Activity rows that point to a market can be reopened in the Trade tab. */
+const isTradable = (item: ActivityItem) => !!item.eventSlug && !!(item.tokenId || item.slug)
+
+const thClass = 'px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap'
+
+export function HistoryTab({ onTrade }: { onTrade: (item: ActivityItem) => void }) {
   const { isConnected } = useAppKitAccount()
   const [activeTab, setActiveTab] = useState<'trades' | 'orders'>('trades')
 
@@ -58,7 +65,7 @@ export function HistoryTab() {
         <p className='text-gray-500 dark:text-gray-400'>View your trading activity and manage open orders</p>
       </div>
 
-      <div className='flex gap-2 bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700'>
+      <div className='inline-flex gap-1 bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700'>
         <button
           onClick={() => setActiveTab('trades')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -89,79 +96,119 @@ export function HistoryTab() {
           ) : trades.length === 0 ? (
             <div className='p-12 text-center text-gray-500 dark:text-gray-400'>No activity found. Start trading to see your history here.</div>
           ) : (
-            <div className='overflow-x-auto'>
-              <table className='w-full'>
-                <thead className='bg-gray-50 dark:bg-gray-800/50'>
-                  <tr>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Date</th>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Type</th>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Market</th>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Side</th>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Outcome</th>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Price</th>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Size</th>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Total</th>
-                    <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Tx Hash</th>
-                  </tr>
-                </thead>
-                <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
-                  {trades.map((trade, i) => (
-                    <tr key={`${trade.timestamp}-${i}`} className='hover:bg-gray-50 dark:hover:bg-gray-800/50'>
-                      <td className='px-6 py-4 text-sm text-gray-900 dark:text-white'>{formatDate(trade.timestamp)}</td>
-                      <td className='px-6 py-4'>
-                        <span className='px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 uppercase'>
-                          {trade.type.toLowerCase()}
-                        </span>
-                      </td>
-                      <td className='px-6 py-4'>
-                        <div className='text-sm font-medium text-gray-900 dark:text-white truncate max-w-xs'>{trade.title}</div>
-                      </td>
-                      <td className='px-6 py-4'>
-                        {trade.side && (
-                          <span
-                            className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                              trade.side === 'BUY'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                            }`}
-                          >
-                            {trade.side}
-                          </span>
-                        )}
-                      </td>
-                      <td className='px-6 py-4'>
-                        <span
-                          className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                            trade.outcome === 'Yes'
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                          }`}
-                        >
-                          {trade.outcome}
-                        </span>
-                      </td>
-                      <td className='px-6 py-4 text-sm text-gray-900 dark:text-white'>${trade.price.toFixed(4)}</td>
-                      <td className='px-6 py-4 text-sm text-gray-900 dark:text-white'>{formatNumber(trade.size)}</td>
-                      <td className='px-6 py-4 text-sm font-medium text-gray-900 dark:text-white'>{formatCurrency(trade.usdcSize)}</td>
-                      <td className='px-6 py-4'>
-                        {trade.transactionHash ? (
-                          <a
-                            href={`${EXPLORERS.POLYGON}/tx/${trade.transactionHash}`}
-                            target='_blank'
-                            rel='noopener noreferrer'
-                            className='text-sm font-mono text-blue-600 dark:text-blue-400 hover:underline truncate max-w-xs block'
-                          >
-                            {trade.transactionHash.slice(0, 10)}...
-                          </a>
-                        ) : (
-                          <span className='text-sm text-gray-400'>—</span>
-                        )}
-                      </td>
+            <>
+              <p className='px-6 py-3 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700'>
+                Click a market to buy more or sell your shares.
+              </p>
+              <div className='overflow-x-auto'>
+                <table className='w-full'>
+                  <thead className='bg-gray-50 dark:bg-gray-800/50'>
+                    <tr>
+                      <th className={thClass}>Market</th>
+                      <th className={thClass}>Activity</th>
+                      <th className={thClass}>Price</th>
+                      <th className={thClass}>Shares</th>
+                      <th className={thClass}>Total</th>
+                      <th className={thClass}>Date</th>
+                      <th className={thClass}>Tx</th>
+                      <th className={thClass} />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
+                    {trades.map((trade, i) => {
+                      const tradable = isTradable(trade)
+
+                      return (
+                        <tr
+                          key={`${trade.timestamp}-${i}`}
+                          onClick={tradable ? () => onTrade(trade) : undefined}
+                          onKeyDown={tradable ? (e) => e.key === 'Enter' && onTrade(trade) : undefined}
+                          tabIndex={tradable ? 0 : undefined}
+                          title={tradable ? 'Trade this market' : undefined}
+                          className={`group ${tradable ? 'cursor-pointer hover:bg-blue-50/60 dark:hover:bg-blue-900/10 focus:outline-none focus-visible:bg-blue-50/60 dark:focus-visible:bg-blue-900/10' : ''}`}
+                        >
+                          <td className='px-4 py-3'>
+                            <div className='flex items-center gap-3 min-w-[240px] max-w-sm'>
+                              {trade.icon ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={trade.icon} alt='' className='w-9 h-9 rounded-md object-cover flex-shrink-0' />
+                              ) : (
+                                <div className='w-9 h-9 rounded-md bg-gray-100 dark:bg-gray-700 flex-shrink-0' />
+                              )}
+                              <div className='min-w-0'>
+                                <div
+                                  className={`text-sm font-medium text-gray-900 dark:text-white truncate ${tradable ? 'group-hover:text-blue-600 dark:group-hover:text-blue-400' : ''}`}
+                                >
+                                  {trade.title}
+                                </div>
+                                {trade.outcome && (
+                                  <span
+                                    className={`inline-block mt-0.5 px-2 py-0.5 text-xs font-medium rounded-full ${
+                                      trade.outcome === 'Yes'
+                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                    }`}
+                                  >
+                                    {trade.outcome}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className='px-4 py-3 whitespace-nowrap'>
+                            <div className='flex items-center gap-1.5'>
+                              <span className='px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 uppercase'>
+                                {trade.type.toLowerCase()}
+                              </span>
+                              {trade.side && (
+                                <span
+                                  className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                                    trade.side === 'BUY'
+                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                  }`}
+                                >
+                                  {trade.side}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className='px-4 py-3 text-sm text-gray-900 dark:text-white'>${trade.price.toFixed(4)}</td>
+                          <td className='px-4 py-3 text-sm text-gray-900 dark:text-white'>{formatNumber(trade.size)}</td>
+                          <td className='px-4 py-3 text-sm font-medium text-gray-900 dark:text-white'>{formatCurrency(trade.usdcSize)}</td>
+                          <td className='px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap'>{formatDate(trade.timestamp)}</td>
+                          <td className='px-4 py-3'>
+                            {trade.transactionHash ? (
+                              <a
+                                href={`${EXPLORERS.POLYGON}/tx/${trade.transactionHash}`}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                onClick={(e) => e.stopPropagation()}
+                                className='text-sm font-mono text-blue-600 dark:text-blue-400 hover:underline'
+                              >
+                                {trade.transactionHash.slice(0, 10)}...
+                              </a>
+                            ) : (
+                              <span className='text-sm text-gray-400'>—</span>
+                            )}
+                          </td>
+                          <td className='px-4 py-3 text-right'>
+                            {tradable && (
+                              <span className='inline-flex items-center gap-1 text-xs font-medium text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 whitespace-nowrap'>
+                                Trade
+                                <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 5l7 7-7 7' />
+                                </svg>
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}

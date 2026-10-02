@@ -30,6 +30,7 @@ export {
   createTradingSession,
   credentialsOf,
   fetchTradingApprovalsState,
+  setupTradingApprovals,
   placeMarketOrder,
   listOpenOrders,
   cancelOrder,

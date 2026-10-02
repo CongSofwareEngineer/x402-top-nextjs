@@ -203,6 +203,8 @@ export function ProfileTab() {
         </div>
       )}
 
+      {onboarding.status.isDeployed && <PositionsPanel canTrade={onboarding.currentStep === ONBOARDING_STEP.DONE} />}
+
       <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6'>
         <BalanceCard
           title='Portfolio'
@@ -394,8 +396,6 @@ export function ProfileTab() {
           </div>
         </div>
       )}
-
-      {onboarding.status.isDeployed && <PositionsPanel canTrade={onboarding.currentStep === ONBOARDING_STEP.DONE} />}
     </div>
   )
 }

@@ -96,7 +96,7 @@ export function PositionsPanel({ canTrade }: { canTrade: boolean }) {
         )}
         {redeem.error && <p className='text-sm text-red-500 break-words'>{redeem.error.message}</p>}
         {!canTrade && positions.length > 0 && (
-          <p className='text-sm text-orange-600 dark:text-orange-400'>Finish setting up your account above to sell or claim positions.</p>
+          <p className='text-sm text-orange-600 dark:text-orange-400'>Finish setting up your account below to sell or claim positions.</p>
         )}
       </div>
 

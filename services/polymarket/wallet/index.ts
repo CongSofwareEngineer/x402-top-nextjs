@@ -27,7 +27,7 @@ import { type PolymarketAccountWallet } from '../types'
 let defaultClient: PublicClient | null = null
 
 /** Polygon public client used for on-chain reads (override per call when you have your own RPC). */
-function polygonClient(client?: PublicClient): PublicClient {
+export function polygonClient(client?: PublicClient): PublicClient {
   if (client) return client
   defaultClient ??= createPublicClient({ chain: polygon, transport: http() }) as PublicClient
 

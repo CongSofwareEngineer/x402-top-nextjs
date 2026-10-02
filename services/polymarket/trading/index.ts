@@ -1,15 +1,20 @@
-import { parseUnits, type WalletClient } from 'viem'
+import { erc1155Abi, erc20Abi, maxUint256, parseUnits, type Address, type WalletClient } from 'viem'
 import { createPublicClient, createSecureClient, OrderSide, OrderType, remoteBuilderSigning } from '@polymarket/client'
+import { updateBalanceAllowance } from '@polymarket/client/actions'
 import { signerFrom } from '@polymarket/client/viem'
 
 import { toNumber } from '../client'
-import { ORDER_SIDE, PUSD_ADDRESS, STORAGE_KEY_CLOB_CREDENTIALS, TOKEN_DECIMALS } from '../constants'
+import { CLOB_ASSET_TYPE, CONTRACTS, ORDER_SIDE, PUSD_ADDRESS, STORAGE_KEY_CLOB_CREDENTIALS, TOKEN_DECIMALS } from '../constants'
 import { type ClobCredentials, type MarketOrder, type OpenOrder } from '../types'
+import { polygonClient } from '../wallet'
 
 export type TradingClient = Awaited<ReturnType<typeof createSecureClient>>
 
 /** SDK credential shape (`key` is a branded `ApiKey` string). */
 type SdkApiKeyCreds = TradingClient['credentials']
+
+/** SDK `AssetType` enum (lives in `@polymarket/bindings`, not re-exported by the client). */
+type ClobAssetType = Parameters<typeof updateBalanceAllowance>[1]['assetType']
 
 /** Minimal key/value storage (`localStorage`-compatible) for cached CLOB credentials. */
 export interface KeyValueStorage {
@@ -20,13 +25,68 @@ export interface KeyValueStorage {
 let publicClient: ReturnType<typeof createPublicClient> | null = null
 
 /**
+ * NegRiskAdapter approvals the CLOB requires for neg-risk orders but the SDK's
+ * `setupTradingApprovals()` leaves out (as of 0.12.0): pUSD allowance and
+ * Conditional Tokens operator approval.
+ */
+async function fetchNegRiskAdapterApprovals(wallet: string) {
+  const client = polygonClient()
+  const [allowance, isOperator] = await Promise.all([
+    client.readContract({ address: PUSD_ADDRESS, abi: erc20Abi, functionName: 'allowance', args: [wallet as Address, CONTRACTS.NegRiskAdapter] }),
+    client.readContract({
+      address: CONTRACTS.ConditionalTokens,
+      abi: erc1155Abi,
+      functionName: 'isApprovedForAll',
+      args: [wallet as Address, CONTRACTS.NegRiskAdapter],
+    }),
+  ])
+
+  // Granted as `max`; half of it still means "unlimited" if the token ever decrements it.
+  return { collateral: allowance >= maxUint256 / BigInt(2), conditionalTokens: isOperator }
+}
+
+/**
  * On-chain check of the approvals `setupTradingApprovals()` grants (pUSD +
- * Conditional Tokens → exchanges/adapters). Read-only, no signer needed.
+ * Conditional Tokens → exchanges/adapters, incl. the NegRiskAdapter). Read-only, no signer needed.
  */
 export async function fetchTradingApprovalsState(wallet: string) {
   publicClient ??= createPublicClient()
 
-  return publicClient.fetchTradingApprovalsState({ user: wallet })
+  const [state, negRiskAdapter] = await Promise.all([publicClient.fetchTradingApprovalsState({ user: wallet }), fetchNegRiskAdapterApprovals(wallet)])
+
+  return {
+    ...state,
+    negRiskAdapter,
+    isFullyApproved: state.isFullyApproved && negRiskAdapter.collateral && negRiskAdapter.conditionalTokens,
+  }
+}
+
+/**
+ * Grant every trading approval of `wallet`: the SDK batch, then the missing
+ * NegRiskAdapter approvals (one gasless transaction each). Finally refreshes the
+ * CLOB's cached pUSD allowance, otherwise orders keep failing with "allowance: 0".
+ */
+export async function setupTradingApprovals(client: TradingClient, wallet: string) {
+  await client.setupTradingApprovals()
+
+  const negRiskAdapter = await fetchNegRiskAdapterApprovals(wallet)
+
+  if (!negRiskAdapter.collateral) {
+    const handle = await client.approveErc20({ amount: 'max', spenderAddress: CONTRACTS.NegRiskAdapter, tokenAddress: PUSD_ADDRESS })
+
+    await handle.wait()
+  }
+  if (!negRiskAdapter.conditionalTokens) {
+    const handle = await client.approveErc1155ForAll({
+      approved: true,
+      operatorAddress: CONTRACTS.NegRiskAdapter,
+      tokenAddress: CONTRACTS.ConditionalTokens,
+    })
+
+    await handle.wait()
+  }
+
+  await updateBalanceAllowance(client, { assetType: CLOB_ASSET_TYPE.COLLATERAL as ClobAssetType })
 }
 
 /** CLOB L2 credentials a connected client is using (SDK `key` → `apiKey`). */
@@ -131,9 +191,12 @@ export type TradingSession = ReturnType<typeof createTradingSession>
 
 /* --------------------------------------------------------------- actions */
 
-/** Submit a market order built by `prepareMarketOrder`. Throws when the CLOB rejects it. */
+/**
+ * Submit a market order built by `prepareMarketOrder`. Throws when the CLOB rejects it.
+ * Defaults to FAK (SDK default): fills what the book takes now, cancels the rest, never rests.
+ */
 export async function placeMarketOrder(client: TradingClient, order: MarketOrder) {
-  const orderType = order.orderType === 'FAK' ? OrderType.FAK : OrderType.FOK
+  const orderType = order.orderType === 'FOK' ? OrderType.FOK : OrderType.FAK
   const response =
     order.side === ORDER_SIDE.BUY
       ? await client.placeMarketOrder({ assetId: order.tokenId, side: OrderSide.BUY, amount: order.amount, maxPrice: order.maxPrice, orderType })
