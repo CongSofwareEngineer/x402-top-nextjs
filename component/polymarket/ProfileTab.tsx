@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useAppKitAccount } from '@reown/appkit/react'
+import { isAddress } from 'viem'
 
 import { DepositCard } from './DepositCard'
 import { PositionsPanel } from './PositionsPanel'
@@ -19,7 +20,7 @@ import {
 } from '@/hooks/polymarket'
 import { useWalletBalance } from '@/hooks/useWalletBalance'
 import { EXPLORERS } from '@/constants/polymarket'
-import { ONBOARDING_STEP, type OnboardingStep } from '@/services/polymarket'
+import { BRIDGE_ADDRESS_TYPE_BY_CHAIN, ONBOARDING_STEP, type OnboardingStep } from '@/services/polymarket'
 
 export function ProfileTab() {
   const { address, isConnected } = useAppKitAccount()
@@ -35,8 +36,15 @@ export function ProfileTab() {
   const { data: supportedAssets = [] } = useSupportedAssets()
   const onboarding = usePolymarketOnboarding()
 
-  const { mutate: createWithdrawal, isPending: withdrawalPending, error: withdrawalError, data: withdrawal } = useCreateWithdrawalAddress()
+  const {
+    mutate: createWithdrawal,
+    reset: resetWithdrawal,
+    isPending: withdrawalPending,
+    error: withdrawalError,
+    data: withdrawal,
+  } = useCreateWithdrawalAddress()
   const [withdrawChainId, setWithdrawChainId] = useState('8453')
+  const [recipientInput, setRecipientInput] = useState('')
 
   const withdrawalAddress = withdrawal?.address?.evm
   // `/v2/value` = open positions only; polymarket.com's Portfolio = positions + cash.
@@ -73,13 +81,33 @@ export function ProfileTab() {
   })
   const selectedAsset = withdrawAssets.find((a) => a.chainId === withdrawChainId)
 
+  // Unlisted bridge chains are EVM; only those can fall back to the connected (EVM) wallet.
+  const isEvmWithdrawChain = BRIDGE_ADDRESS_TYPE_BY_CHAIN[withdrawChainId] === undefined
+  const recipient = recipientInput.trim() || (isEvmWithdrawChain ? (address ?? '') : '')
+  const recipientError = !recipient
+    ? `Enter a ${selectedAsset?.chainName ?? 'destination'} recipient address`
+    : isEvmWithdrawChain && !isAddress(recipient)
+      ? 'Invalid EVM address'
+      : null
+
+  // A destination is bound to chain + recipient — drop the old one when either changes.
+  const handleWithdrawChainChange = (chainId: string) => {
+    setWithdrawChainId(chainId)
+    resetWithdrawal()
+  }
+
+  const handleRecipientChange = (value: string) => {
+    setRecipientInput(value)
+    resetWithdrawal()
+  }
+
   const handleCreateWithdrawal = () => {
-    if (!address || !onboarding.wallet || !selectedAsset) return
+    if (!onboarding.wallet || !selectedAsset || recipientError) return
     createWithdrawal({
       address: onboarding.wallet,
       toChainId: withdrawChainId,
       toTokenAddress: selectedAsset.token.address,
-      recipientAddr: address,
+      recipientAddr: recipient,
     })
   }
 
@@ -224,7 +252,7 @@ export function ProfileTab() {
                 <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'>Destination chain</label>
                 <select
                   value={withdrawChainId}
-                  onChange={(e) => setWithdrawChainId(e.target.value)}
+                  onChange={(e) => handleWithdrawChainChange(e.target.value)}
                   className='w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent'
                 >
                   {withdrawAssets.map((asset) => (
@@ -234,6 +262,35 @@ export function ProfileTab() {
                   ))}
                 </select>
               </div>
+              <div>
+                <div className='flex items-center justify-between mb-1'>
+                  <label className='block text-sm font-medium text-gray-700 dark:text-gray-300'>Recipient address</label>
+                  {recipientInput && isEvmWithdrawChain && address && (
+                    <button
+                      type='button'
+                      onClick={() => handleRecipientChange('')}
+                      className='text-xs text-green-600 dark:text-green-400 hover:underline'
+                    >
+                      Use connected wallet
+                    </button>
+                  )}
+                </div>
+                <input
+                  type='text'
+                  value={recipientInput}
+                  onChange={(e) => handleRecipientChange(e.target.value)}
+                  placeholder={isEvmWithdrawChain ? (address ?? '0x...') : `${selectedAsset?.chainName ?? ''} address`}
+                  spellCheck={false}
+                  autoComplete='off'
+                  className='w-full px-4 py-2 font-mono text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent'
+                />
+                <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
+                  {isEvmWithdrawChain
+                    ? 'Defaults to your connected wallet when left empty.'
+                    : `${selectedAsset?.chainName ?? 'This chain'} is not EVM — enter a recipient address on that chain.`}
+                </p>
+                {recipientInput && recipientError && <p className='mt-1 text-xs text-red-500'>{recipientError}</p>}
+              </div>
               {selectedAsset && (
                 <p className='text-xs text-gray-500 dark:text-gray-400'>
                   Withdrawing to {selectedAsset.chainName} as {selectedAsset.token.symbol} (min checkout ${selectedAsset.minCheckoutUsd.toFixed(2)})
@@ -241,7 +298,7 @@ export function ProfileTab() {
               )}
               <button
                 onClick={handleCreateWithdrawal}
-                disabled={withdrawalPending || !selectedAsset}
+                disabled={withdrawalPending || !selectedAsset || !!recipientError}
                 className='w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2'
               >
                 {withdrawalPending ? 'Creating destination...' : 'Create withdrawal destination'}
