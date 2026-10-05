@@ -176,6 +176,14 @@ export function marketLabel(market: Market) {
 }
 
 /**
+ * Market no longer tradable — closed/resolved or not accepting orders.
+ * `endDate` is not used: sports markets end at kick-off but keep trading live.
+ */
+export function isMarketEnded(market: Market) {
+  return !!market.closed || market.acceptingOrders === false
+}
+
+/**
  * Parse a polymarket.com link:
  * `https://polymarket.com/event/<eventSlug>[/<marketSlug>]`.
  */

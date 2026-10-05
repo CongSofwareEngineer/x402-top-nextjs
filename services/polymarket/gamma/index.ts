@@ -122,6 +122,27 @@ export async function getEventBySlug(slug: string): Promise<PolyEvent | null> {
 }
 
 /**
+ * Fetch markets by their slugs in one go (e.g. the markets of an activity feed).
+ * Gamma `/markets` only returns open markets unless `closed=true`, so open and
+ * closed markets are requested in parallel and merged.
+ */
+export async function getMarketsBySlugs(slugs: string[]): Promise<Market[]> {
+  if (slugs.length === 0) return []
+
+  const fetchMarkets = (closed: boolean) => {
+    const params = new URLSearchParams({ closed: String(closed), limit: String(slugs.length) })
+
+    slugs.forEach((slug) => params.append('slug', slug))
+
+    return requestJson<GammaMarketRow[]>(baseUrl('GAMMA'), `/markets?${params.toString()}`)
+  }
+
+  const [open, closed] = await Promise.all([fetchMarkets(false), fetchMarkets(true)])
+
+  return [...(open ?? []), ...(closed ?? [])].map(mapGammaMarket)
+}
+
+/**
  * Public profile + bridge deposit addresses for a Polymarket account wallet.
  *
  * Gamma only has a public profile once the user finished polymarket.com's

@@ -7,11 +7,21 @@ import { useAppKitAccount } from '@reown/appkit/react'
 
 import { formatDateTime } from './format'
 
-import { useCancelOrder, usePolymarketCredentials, usePolyMarketActivity, usePolyMarketOpenOrders } from '@/hooks/polymarket'
-import { EXPLORERS } from '@/constants/polymarket'
+import {
+  useCancelOrder,
+  usePolymarketCredentials,
+  usePolyMarketActivity,
+  usePolyMarketMarketStatuses,
+  usePolyMarketOpenOrders,
+} from '@/hooks/polymarket'
+import { EXPLORERS, POLYMARKET_WEB_URL } from '@/constants/polymarket'
 
 /** Activity rows that point to a market can be reopened in the Trade tab. */
 const isTradable = (item: ActivityItem) => !!item.eventSlug && !!(item.tokenId || item.slug)
+
+/** Market page on polymarket.com (`/event/<eventSlug>[/<marketSlug>]`). */
+const polymarketUrl = (item: ActivityItem) =>
+  item.eventSlug ? `${POLYMARKET_WEB_URL}/event/${item.eventSlug}${item.slug ? `/${item.slug}` : ''}` : undefined
 
 const thClass = 'px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap'
 
@@ -25,6 +35,7 @@ export function HistoryTab({ onTrade }: { onTrade: (item: ActivityItem) => void 
   const { mutate: cancelOrder, isPending: cancelPending } = useCancelOrder()
 
   const trades = activity?.items ?? []
+  const { data: endedBySlug = {} } = usePolyMarketMarketStatuses(trades.flatMap((t) => (t.slug ? [t.slug] : [])))
 
   if (!isConnected) {
     return (
@@ -110,6 +121,8 @@ export function HistoryTab({ onTrade }: { onTrade: (item: ActivityItem) => void 
                   <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
                     {trades.map((trade, i) => {
                       const tradable = isTradable(trade)
+                      const ended = trade.slug ? endedBySlug[trade.slug] : undefined
+                      const marketUrl = polymarketUrl(trade)
 
                       return (
                         <tr
@@ -134,16 +147,38 @@ export function HistoryTab({ onTrade }: { onTrade: (item: ActivityItem) => void 
                                 >
                                   {trade.title}
                                 </div>
-                                {trade.outcome && (
-                                  <span
-                                    className={`inline-block mt-0.5 px-2 py-0.5 text-xs font-medium rounded-full ${
-                                      trade.outcome === 'Yes'
-                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                    }`}
+                                <div className='flex flex-wrap items-center gap-1.5 mt-0.5'>
+                                  {trade.outcome && (
+                                    <span
+                                      className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                                        trade.outcome === 'Yes'
+                                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                          : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                      }`}
+                                    >
+                                      {trade.outcome}
+                                    </span>
+                                  )}
+                                  {ended !== undefined && <MarketStatusBadge ended={ended} />}
+                                </div>
+                                {marketUrl && (
+                                  <a
+                                    href={marketUrl}
+                                    target='_blank'
+                                    rel='noopener noreferrer'
+                                    onClick={(e) => e.stopPropagation()}
+                                    className='inline-flex items-center gap-0.5 mt-1 text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline'
                                   >
-                                    {trade.outcome}
-                                  </span>
+                                    View on Polymarket
+                                    <svg className='w-3 h-3' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                      <path
+                                        strokeLinecap='round'
+                                        strokeLinejoin='round'
+                                        strokeWidth={2}
+                                        d='M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14'
+                                      />
+                                    </svg>
+                                  </a>
                                 )}
                               </div>
                             </div>
@@ -288,6 +323,20 @@ export function HistoryTab({ onTrade }: { onTrade: (item: ActivityItem) => void 
         </div>
       )}
     </div>
+  )
+}
+
+/** Live = market still trading, Ended = closed/resolved (see `isMarketEnded`). */
+function MarketStatusBadge({ ended }: { ended: boolean }) {
+  if (ended) {
+    return <span className='px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'>Ended</span>
+  }
+
+  return (
+    <span className='inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'>
+      <span className='w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse' />
+      Live
+    </span>
   )
 }
 

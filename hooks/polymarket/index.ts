@@ -1,6 +1,6 @@
 export { useEnsurePolygon, usePolymarketCredentials, usePolymarketTradingClient } from './session'
 export { usePolymarketOnboarding, usePolyMarketTradingApprovals } from './onboarding'
-export { usePolyMarketEvents, usePolyMarketEvent, usePolyMarketOrderBook } from './markets'
+export { usePolyMarketEvents, usePolyMarketEvent, usePolyMarketOrderBook, usePolyMarketMarketStatuses } from './markets'
 export {
   usePolyMarketAccountWallet,
   usePolyMarketWalletAddress,

@@ -79,6 +79,9 @@ export const SLIPPAGE_OPTIONS = [0.02, 0.05, 0.1]
 
 export const MARKETS_PAGE_SIZE = 50
 
+/** polymarket.com — market pages live at `${POLYMARKET_WEB_URL}/event/<eventSlug>[/<marketSlug>]`. */
+export const POLYMARKET_WEB_URL = 'https://polymarket.com'
+
 /** Explorer links. */
 export const EXPLORERS = {
   BASE: 'https://basescan.org',

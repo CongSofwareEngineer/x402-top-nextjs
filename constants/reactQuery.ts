@@ -13,6 +13,7 @@ export enum REACT_QUERY_POLY_MARKET {
   ORDER_BOOK = 'polymarket_order_book',
   EVENTS = 'polymarket_events',
   EVENT = 'polymarket_event',
+  MARKET_STATUSES = 'polymarket_market_statuses',
   SUPPORTED_ASSETS = 'polymarket_supported_assets',
   BRIDGE_STATUS = 'polymarket_bridge_status',
 }
