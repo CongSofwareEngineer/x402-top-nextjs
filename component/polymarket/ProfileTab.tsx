@@ -405,46 +405,40 @@ const ONBOARDING_STEPS: {
   key: Exclude<OnboardingStep, typeof ONBOARDING_STEP.DONE>
   title: string
   description: string
-  action: string
   pendingLabel: string
 }[] = [
   {
     key: ONBOARDING_STEP.DEPLOY,
     title: 'Deploy wallet',
     description: 'Create your Polymarket Deposit Wallet on Polygon. Gasless, no signature needed.',
-    action: 'Deploy',
-    pendingLabel: 'Deploying...',
+    pendingLabel: 'Deploying wallet...',
   },
   {
     key: ONBOARDING_STEP.ENABLE_TRADING,
     title: 'Enable trading',
     description: 'Sign once to create your trading API credentials.',
-    action: 'Enable',
-    pendingLabel: 'Enabling...',
+    pendingLabel: 'Enabling trading...',
   },
   {
     key: ONBOARDING_STEP.APPROVE,
     title: 'Approve tokens',
-    description: 'Approve pUSD and outcome tokens for the exchanges in one gasless transaction.',
-    action: 'Approve all',
-    pendingLabel: 'Approving...',
+    description: 'Approve pUSD and outcome tokens for the exchanges and enable auto-redeem in one gasless transaction.',
+    pendingLabel: 'Approving tokens...',
   },
 ]
 
 function OnboardingCard({ onboarding }: { onboarding: ReturnType<typeof usePolymarketOnboarding> }) {
-  const { currentStep, status, steps, wallet, walletType, isLoading } = onboarding
+  const { currentStep, status, createWallet, wallet, walletType, isLoading } = onboarding
 
   const isDone = {
     [ONBOARDING_STEP.DEPLOY]: status.isDeployed,
     [ONBOARDING_STEP.ENABLE_TRADING]: status.isTradingEnabled,
     [ONBOARDING_STEP.APPROVE]: status.isApproved,
   }
-  const actions = {
-    [ONBOARDING_STEP.DEPLOY]: steps.deploy,
-    [ONBOARDING_STEP.ENABLE_TRADING]: steps.enableTrading,
-    [ONBOARDING_STEP.APPROVE]: steps.approveAll,
-  }
-  const isBusy = isLoading || Object.values(actions).some((action) => action.isPending)
+  const activeStep = createWallet.runningStep ?? currentStep
+  const runningIndex = ONBOARDING_STEPS.findIndex((step) => step.key === createWallet.runningStep)
+  const pendingLabel =
+    runningIndex >= 0 ? `${ONBOARDING_STEPS[runningIndex].pendingLabel} (${runningIndex + 1}/${ONBOARDING_STEPS.length})` : 'Creating wallet...'
 
   return (
     <div className='bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6'>
@@ -460,47 +454,44 @@ function OnboardingCard({ onboarding }: { onboarding: ReturnType<typeof usePolym
       <ol className='space-y-3'>
         {ONBOARDING_STEPS.map((step, index) => {
           const done = isDone[step.key]
-          const active = currentStep === step.key
-          const action = actions[step.key]
+          const active = activeStep === step.key
 
           return (
             <li
               key={step.key}
-              className={`flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border p-4 ${
+              className={`flex items-start gap-3 rounded-lg border p-4 ${
                 active ? 'border-orange-300 dark:border-orange-700 bg-orange-50/50 dark:bg-orange-900/10' : 'border-gray-200 dark:border-gray-700'
               }`}
             >
-              <div className='flex items-start gap-3 flex-1 min-w-0'>
-                <span
-                  className={`w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center text-sm font-semibold ${
-                    done
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      : active
-                        ? 'bg-orange-600 text-white'
-                        : 'bg-gray-100 text-gray-400 dark:bg-gray-700'
-                  }`}
-                >
-                  {done ? '✓' : index + 1}
-                </span>
-                <div className='min-w-0'>
-                  <p className='font-medium text-gray-900 dark:text-white'>{step.title}</p>
-                  <p className='text-sm text-gray-500 dark:text-gray-400'>{step.description}</p>
-                  {action.error && <p className='text-sm text-red-500 mt-1 break-words'>{action.error.message}</p>}
-                </div>
+              <span
+                className={`w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center text-sm font-semibold ${
+                  done
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    : active
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-gray-100 text-gray-400 dark:bg-gray-700'
+                }`}
+              >
+                {done ? '✓' : index + 1}
+              </span>
+              <div className='min-w-0'>
+                <p className='font-medium text-gray-900 dark:text-white'>{step.title}</p>
+                <p className='text-sm text-gray-500 dark:text-gray-400'>{step.description}</p>
               </div>
-              {active && (
-                <button
-                  onClick={action.run}
-                  disabled={isBusy}
-                  className='px-4 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0'
-                >
-                  {action.isPending ? step.pendingLabel : step.action}
-                </button>
-              )}
             </li>
           )
         })}
       </ol>
+      {createWallet.error && <p className='text-sm text-red-500 mt-3 break-words'>{createWallet.error.message}</p>}
+      <div className='mt-4 flex justify-end'>
+        <button
+          onClick={createWallet.run}
+          disabled={isLoading || createWallet.isPending}
+          className='px-4 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed'
+        >
+          {createWallet.isPending ? pendingLabel : 'Create wallet'}
+        </button>
+      </div>
     </div>
   )
 }

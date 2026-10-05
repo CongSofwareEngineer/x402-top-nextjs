@@ -49,6 +49,9 @@ export const CONTRACTS = {
   NegRiskAdapter: '0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296',
 } as const
 
+/** Relayer label of the gasless batch granting every trading approval (same label as the SDK's). */
+export const TRADING_APPROVALS_METADATA = 'Trading setup approvals'
+
 /** CLOB `/balance-allowance` asset types (SDK `AssetType`). */
 export const CLOB_ASSET_TYPE = {
   COLLATERAL: 'COLLATERAL',

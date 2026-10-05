@@ -187,9 +187,7 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
 
         {currentStep !== ONBOARDING_STEP.DONE ? (
           <div className='bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4'>
-            <p className='text-sm text-amber-800 dark:text-amber-300'>
-              Finish setting up your account in the Profile tab (deploy wallet, enable trading, approve tokens) to place orders.
-            </p>
+            <p className='text-sm text-amber-800 dark:text-amber-300'>Create your wallet in the Profile tab to place orders.</p>
           </div>
         ) : (
           <>

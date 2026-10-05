@@ -10,6 +10,12 @@ export const POLYMARKET_ROUTES = {
 } as const
 
 /**
+ * "Create wallet" re-reads each step's chain/API state until it is confirmed
+ * before moving on (state can trail the relayer by a few blocks).
+ */
+export const ONBOARDING_TRACKING = { INTERVAL_MS: 2_000, MAX_ATTEMPTS: 30 } as const
+
+/**
  * Curated homepage categories (mirrors polymarket.com nav).
  * `id` = Gamma top-level tag id, verified via `/events?tag_slug=<slug>`.
  */

@@ -1,10 +1,18 @@
-import { erc1155Abi, erc20Abi, maxUint256, parseUnits, type Address, type WalletClient } from 'viem'
+import { encodeFunctionData, erc1155Abi, erc20Abi, maxUint256, parseUnits, type Address, type WalletClient } from 'viem'
 import { createPublicClient, createSecureClient, OrderSide, OrderType, remoteBuilderSigning } from '@polymarket/client'
-import { updateBalanceAllowance } from '@polymarket/client/actions'
+import { prepareGaslessTransaction, updateBalanceAllowance, type GaslessWorkflow } from '@polymarket/client/actions'
 import { signerFrom } from '@polymarket/client/viem'
 
 import { toNumber } from '../client'
-import { CLOB_ASSET_TYPE, CONTRACTS, ORDER_SIDE, PUSD_ADDRESS, STORAGE_KEY_CLOB_CREDENTIALS, TOKEN_DECIMALS } from '../constants'
+import {
+  CLOB_ASSET_TYPE,
+  CONTRACTS,
+  ORDER_SIDE,
+  PUSD_ADDRESS,
+  STORAGE_KEY_CLOB_CREDENTIALS,
+  TOKEN_DECIMALS,
+  TRADING_APPROVALS_METADATA,
+} from '../constants'
 import { type ClobCredentials, type MarketOrder, type OpenOrder } from '../types'
 import { polygonClient } from '../wallet'
 
@@ -62,30 +70,73 @@ export async function fetchTradingApprovalsState(wallet: string) {
 }
 
 /**
- * Grant every trading approval of `wallet`: the SDK batch, then the missing
- * NegRiskAdapter approvals (one gasless transaction each). Finally refreshes the
- * CLOB's cached pUSD allowance, otherwise orders keep failing with "allowance: 0".
+ * Answers the signing requests of a gasless workflow with the wallet's signer
+ * (mirrors the SDK's internal driver, which is not exported).
+ */
+async function runGaslessWorkflow(walletClient: WalletClient, workflow: GaslessWorkflow) {
+  const signer = signerFrom(walletClient)
+  let step = await workflow.next()
+
+  while (!step.done) {
+    const request = step.value
+
+    try {
+      switch (request.kind) {
+        case 'requestAddress':
+          step = await workflow.next(await signer.getAddress())
+          break
+        case 'signGaslessTypedData':
+          step = await workflow.next(await signer.signTypedData(request.payload))
+          break
+        case 'signGaslessMessage':
+          step = await workflow.next(await signer.signMessage(request.payload))
+          break
+        default:
+          throw new Error('Unsupported gasless workflow request')
+      }
+    } catch (error) {
+      step = await workflow.throw(error)
+    }
+  }
+
+  return step.value
+}
+
+/**
+ * Grant every missing trading approval of `wallet` as ONE gasless batch, so the
+ * user signs once: the approvals the SDK's `setupTradingApprovals()` would grant
+ * (its `missing` list, built the same way) plus the NegRiskAdapter ones it leaves
+ * out. Finally refreshes the CLOB's cached pUSD allowance, otherwise orders keep
+ * failing with "allowance: 0".
  *
- * The SDK batch also enables auto-redeem (AutoRedeemOperator as operator of the
+ * The SDK's list also covers auto-redeem (AutoRedeemOperator as operator of the
  * CTF + PositionManager tokens), so resolved winnings are claimed without the
  * user pressing Claim; `isFullyApproved` stays false until it is granted.
  */
-export async function setupTradingApprovals(client: TradingClient, wallet: string) {
-  await client.setupTradingApprovals()
+export async function setupTradingApprovals(client: TradingClient, wallet: string, walletClient: WalletClient) {
+  const { missing, negRiskAdapter } = await fetchTradingApprovalsState(wallet)
+  const erc20 = [
+    ...missing.erc20,
+    ...(negRiskAdapter.collateral ? [] : [{ tokenAddress: PUSD_ADDRESS, spenderAddress: CONTRACTS.NegRiskAdapter, amount: maxUint256 }]),
+  ]
+  const erc1155 = [
+    ...missing.erc1155,
+    ...(negRiskAdapter.conditionalTokens ? [] : [{ tokenAddress: CONTRACTS.ConditionalTokens, operatorAddress: CONTRACTS.NegRiskAdapter }]),
+  ]
+  const calls = [
+    ...erc20.map((approval) => ({
+      to: approval.tokenAddress,
+      data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [approval.spenderAddress as Address, approval.amount] }),
+    })),
+    ...erc1155.map((approval) => ({
+      to: approval.tokenAddress,
+      data: encodeFunctionData({ abi: erc1155Abi, functionName: 'setApprovalForAll', args: [approval.operatorAddress as Address, true] }),
+    })),
+  ]
 
-  const negRiskAdapter = await fetchNegRiskAdapterApprovals(wallet)
-
-  if (!negRiskAdapter.collateral) {
-    const handle = await client.approveErc20({ amount: 'max', spenderAddress: CONTRACTS.NegRiskAdapter, tokenAddress: PUSD_ADDRESS })
-
-    await handle.wait()
-  }
-  if (!negRiskAdapter.conditionalTokens) {
-    const handle = await client.approveErc1155ForAll({
-      approved: true,
-      operatorAddress: CONTRACTS.NegRiskAdapter,
-      tokenAddress: CONTRACTS.ConditionalTokens,
-    })
+  if (calls.length > 0) {
+    const workflow = await prepareGaslessTransaction(client, { calls, metadata: TRADING_APPROVALS_METADATA })
+    const handle = await runGaslessWorkflow(walletClient, workflow)
 
     await handle.wait()
   }
