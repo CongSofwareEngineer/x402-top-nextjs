@@ -17,3 +17,8 @@ export enum REACT_QUERY_POLY_MARKET {
   SUPPORTED_ASSETS = 'polymarket_supported_assets',
   BRIDGE_STATUS = 'polymarket_bridge_status',
 }
+
+export enum REACT_QUERY_ERC7702 {
+  DELEGATION = 'erc7702_delegation',
+  CAPABILITIES = 'erc7702_capabilities',
+}
