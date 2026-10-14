@@ -5,9 +5,17 @@ import type { Market, MarketOrderInput, MarketQuote, OrderBook, OrderSide, PolyE
 import { useState } from 'react'
 
 import { formatCents, formatChance, formatDateTime, formatUsd, formatVolumeFull } from './format'
+import { Countdown } from './MarketsTab'
 
-import { usePlaceMarketOrder, usePolymarketOnboarding, usePolyMarketEvent, usePolyMarketOrderBook, usePolyMarketPositions } from '@/hooks/polymarket'
-import { SLIPPAGE_OPTIONS } from '@/constants/polymarket'
+import {
+  usePlaceMarketOrder,
+  usePolymarketOnboarding,
+  usePolyMarketEvent,
+  usePolyMarketLiveMarket,
+  usePolyMarketOrderBook,
+  usePolyMarketPositions,
+} from '@/hooks/polymarket'
+import { SLIPPAGE_OPTIONS, UP_DOWN_SERIES } from '@/constants/polymarket'
 import {
   ceil2,
   floor2,
@@ -16,6 +24,7 @@ import {
   marketLabel,
   ONBOARDING_STEP,
   ORDER_SIDE,
+  outcomeName as getOutcomeName,
   outcomeQuotes,
   prepareMarketOrder,
   quoteMarketOrder,
@@ -27,7 +36,7 @@ import {
 export interface TradeSelection {
   event: PolyEvent
   marketId: string
-  /** 0 = Yes, 1 = No. */
+  /** 0 = Yes/Up, 1 = No/Down. */
   outcomeIndex: number
 }
 
@@ -46,9 +55,11 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
   const [slippage, setSlippage] = useState(MARKET_ORDER_SLIPPAGE)
   const [formError, setFormError] = useState<string | null>(null)
 
-  const market = event.markets.find((m) => m.id === marketId) ?? selection.event.markets.find((m) => m.id === marketId) ?? event.markets[0]
+  const restMarket = event.markets.find((m) => m.id === marketId) ?? selection.event.markets.find((m) => m.id === marketId) ?? event.markets[0]
+  // Live best bid/ask + chance of the selected market (WebSocket).
+  const market = usePolyMarketLiveMarket(restMarket)
   const tokenId = market?.clobTokenIds[outcomeIndex]
-  const outcomeName = outcomeIndex === 0 ? 'Yes' : 'No'
+  const outcomeName = market ? getOutcomeName(market, outcomeIndex) : ''
 
   const { data: orderBook, refetch: refetchBook } = usePolyMarketOrderBook(tokenId)
   const { data: positions } = usePolyMarketPositions()
@@ -101,6 +112,9 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
   }
 
   const quotes = outcomeQuotes(market, side)
+  const endDate = market.endDate || event.endDate
+  // Recurring Up/Down window (e.g. BTC 5m) → big live countdown in the header.
+  const isUpDown = Object.values(UP_DOWN_SERIES).some((s) => event.slug.startsWith(s.slugPrefix))
   const isBuy = side === ORDER_SIDE.BUY
   // Same rule as `prepareMarketOrder` (amount truncated to cents) — surfaced before submit.
   const belowMinBuy = isBuy && usd > 0 && floor2(usd) < MIN_MARKET_ORDER_USD
@@ -118,9 +132,10 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
               <h2 className='text-xl font-bold text-gray-900 dark:text-white'>{event.title}</h2>
               <div className='flex flex-wrap gap-x-4 text-sm text-gray-500 dark:text-gray-400 mt-1'>
                 <span>{formatVolumeFull(event.volume)} Vol.</span>
-                {(market.endDate || event.endDate) && <span>Ends {formatDateTime((market.endDate || event.endDate)!)}</span>}
+                {endDate && <span>Ends {formatDateTime(endDate)}</span>}
               </div>
             </div>
+            {isUpDown && endDate && <Countdown to={endDate} size='lg' />}
           </div>
 
           {event.markets.length > 1 && (
@@ -128,7 +143,7 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
               {event.markets.map((m) => (
                 <MarketRow
                   key={m.id}
-                  market={m}
+                  market={m.id === market.id ? market : m}
                   selected={m.id === market.id}
                   selectedOutcome={outcomeIndex}
                   onChoose={(i) => choose(m.id, i, ORDER_SIDE.BUY)}
@@ -179,7 +194,7 @@ export function TradeTab({ selection }: { selection: TradeSelection }) {
                   selected ? tone : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                {i === 0 ? 'Yes' : 'No'} {formatCents(price)}
+                {getOutcomeName(market, i)} {formatCents(price)}
               </button>
             )
           })}
@@ -392,7 +407,7 @@ function MarketRow({
           active(0) ? 'bg-green-500 text-white' : 'bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20'
         }`}
       >
-        Buy Yes {formatCents(quotes.yes)}
+        Buy {getOutcomeName(market, 0)} {formatCents(quotes.yes)}
       </button>
       <button
         onClick={() => onChoose(1)}
@@ -400,7 +415,7 @@ function MarketRow({
           active(1) ? 'bg-red-500 text-white' : 'bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20'
         }`}
       >
-        Buy No {formatCents(quotes.no)}
+        Buy {getOutcomeName(market, 1)} {formatCents(quotes.no)}
       </button>
     </div>
   )

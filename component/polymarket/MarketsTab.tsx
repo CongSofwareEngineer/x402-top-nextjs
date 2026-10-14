@@ -2,12 +2,21 @@
 
 import type { TradeSelection } from './TradeTab'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-import { formatCents, formatChance, formatDateTime, formatVolume } from './format'
+import { formatCents, formatChance, formatCountdown, formatDateTime, formatVolume } from './format'
 
-import { usePolyMarketEvents } from '@/hooks/polymarket'
-import { getEventBySlug, marketLabel, outcomeQuotes, parsePolymarketUrl, yesChance, type Market, type PolyEvent } from '@/services/polymarket'
+import { usePolyMarketEvents, usePolyMarketLiveMarket, usePolyMarketUpDownEvent } from '@/hooks/polymarket'
+import {
+  getEventBySlug,
+  marketLabel,
+  outcomeName,
+  outcomeQuotes,
+  parsePolymarketUrl,
+  yesChance,
+  type Market,
+  type PolyEvent,
+} from '@/services/polymarket'
 import {
   EXPIRY_SORT_EXCLUDED_TAG_IDS,
   EXPIRY_SORT_OPTIONS,
@@ -15,9 +24,14 @@ import {
   MARKET_SORT_PRESETS,
   MARKETS_PAGE_SIZE,
   POLYMARKET_CATEGORIES,
+  UP_DOWN_SERIES,
   type ExpirySortKey,
   type MarketSortKey,
 } from '@/constants/polymarket'
+
+/** Series pinned on top of the gallery. */
+const PINNED_SERIES = UP_DOWN_SERIES.BTC_5M
+const COUNTDOWN_TICK_MS = 1_000
 
 interface MarketsTabProps {
   onSelect: (selection: TradeSelection) => void
@@ -49,6 +63,7 @@ export function MarketsTab({ onSelect }: MarketsTabProps) {
   }, [sortKey, expirySort, categoryId])
 
   const { data, isLoading, error, refetch, isFetching, fetchNextPage, hasNextPage, isFetchingNextPage } = usePolyMarketEvents(queryFilters)
+  const { data: pinnedEvent } = usePolyMarketUpDownEvent(PINNED_SERIES)
 
   const events = useMemo(() => {
     const seen = new Set<string>()
@@ -62,8 +77,20 @@ export function MarketsTab({ onSelect }: MarketsTabProps) {
     if (!searchQuery || parsedLink) return events
     const query = searchQuery.toLowerCase()
 
-    return events.filter((e) => e.title.toLowerCase().includes(query) || e.markets.some((m) => m.question?.toLowerCase().includes(query)))
+    return events.filter((e) => matchesQuery(e, query))
   }, [events, searchQuery, parsedLink])
+
+  // Current BTC 5m Up/Down window first (like polymarket.com), then the feed without it.
+  const galleryEvents = useMemo(() => {
+    const showPinned =
+      !!pinnedEvent &&
+      pinnedEvent.markets.length > 0 &&
+      !parsedLink &&
+      (!categoryId || categoryId === PINNED_SERIES.tagId) &&
+      (!searchQuery || matchesQuery(pinnedEvent, searchQuery.toLowerCase()))
+
+    return showPinned ? [pinnedEvent, ...filteredEvents.filter((e) => e.id !== pinnedEvent.id)] : filteredEvents
+  }, [pinnedEvent, filteredEvents, parsedLink, categoryId, searchQuery])
 
   const openLink = async () => {
     if (!parsedLink) return
@@ -192,15 +219,15 @@ export function MarketsTab({ onSelect }: MarketsTabProps) {
             </div>
           ))}
         </div>
-      ) : filteredEvents.length === 0 ? (
+      ) : galleryEvents.length === 0 ? (
         <div className='text-center py-12 text-gray-500 dark:text-gray-400'>
           {parsedLink ? 'Press Open to load this Polymarket event.' : 'No markets found matching your criteria.'}
         </div>
       ) : (
         <>
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'>
-            {filteredEvents.map((event) => (
-              <EventCard key={event.id} event={event} onSelect={onSelect} />
+            {galleryEvents.map((event) => (
+              <EventCard key={event.id} event={event} onSelect={onSelect} live={event.id === pinnedEvent?.id} />
             ))}
           </div>
           {hasNextPage && (
@@ -221,6 +248,10 @@ export function MarketsTab({ onSelect }: MarketsTabProps) {
   )
 }
 
+function matchesQuery(event: PolyEvent, query: string) {
+  return event.title.toLowerCase().includes(query) || event.markets.some((m) => m.question?.toLowerCase().includes(query))
+}
+
 function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
@@ -236,9 +267,19 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
   )
 }
 
-function EventCard({ event, onSelect }: { event: PolyEvent; onSelect: (selection: TradeSelection) => void }) {
+function EventCard({
+  event,
+  onSelect,
+  live,
+}: {
+  event: PolyEvent
+  onSelect: (selection: TradeSelection) => void
+  /** Up/Down window: live (WebSocket) prices + countdown to `endDate` instead of the end date. */
+  live?: boolean
+}) {
   const single = event.markets.length === 1
-  const firstMarket = event.markets[0]
+  const liveMarket = usePolyMarketLiveMarket(live ? event.markets[0] : undefined)
+  const firstMarket = liveMarket ?? event.markets[0]
   const select = (market: Market, outcomeIndex: number) => onSelect({ event, marketId: market.id, outcomeIndex })
 
   return (
@@ -258,8 +299,8 @@ function EventCard({ event, onSelect }: { event: PolyEvent; onSelect: (selection
       <div className='flex-1 min-h-0'>
         {single ? (
           <div className='grid grid-cols-2 gap-2 h-full items-end pb-1'>
-            <OutcomeButton tone='yes' label='Yes' onClick={() => select(firstMarket, 0)} />
-            <OutcomeButton tone='no' label='No' onClick={() => select(firstMarket, 1)} />
+            <OutcomeButton tone='yes' label={outcomeName(firstMarket, 0)} onClick={() => select(firstMarket, 0)} />
+            <OutcomeButton tone='no' label={outcomeName(firstMarket, 1)} onClick={() => select(firstMarket, 1)} />
           </div>
         ) : (
           <div className='h-full overflow-y-auto space-y-1.5 pr-1'>
@@ -270,8 +311,14 @@ function EventCard({ event, onSelect }: { event: PolyEvent; onSelect: (selection
                 <div key={market.id} className='flex items-center gap-2 text-sm'>
                   <span className='flex-1 truncate text-gray-700 dark:text-gray-300'>{marketLabel(market)}</span>
                   <span className='font-semibold text-gray-900 dark:text-white w-10 text-right'>{formatChance(yesChance(market))}</span>
-                  <OutcomeButton tone='yes' label='Yes' compact title={formatCents(quotes.yes)} onClick={() => select(market, 0)} />
-                  <OutcomeButton tone='no' label='No' compact title={formatCents(quotes.no)} onClick={() => select(market, 1)} />
+                  <OutcomeButton
+                    tone='yes'
+                    label={outcomeName(market, 0)}
+                    compact
+                    title={formatCents(quotes.yes)}
+                    onClick={() => select(market, 0)}
+                  />
+                  <OutcomeButton tone='no' label={outcomeName(market, 1)} compact title={formatCents(quotes.no)} onClick={() => select(market, 1)} />
                 </div>
               )
             })}
@@ -281,8 +328,61 @@ function EventCard({ event, onSelect }: { event: PolyEvent; onSelect: (selection
 
       <div className='flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-4'>
         <span>{formatVolume(event.volume)} Vol.</span>
-        {event.endDate && <span className='text-orange-500'>Ends {formatDateTime(event.endDate)}</span>}
+        {event.endDate && (live ? <Countdown to={event.endDate} /> : <span className='text-orange-500'>Ends {formatDateTime(event.endDate)}</span>)}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Live countdown to `to` (Up/Down window end), ticking every second.
+ * `sm` = inline badge (gallery card), `lg` = big `MM : SS` block (Trade header).
+ */
+export function Countdown({ to, size = 'sm' }: { to: string; size?: 'sm' | 'lg' }) {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), COUNTDOWN_TICK_MS)
+
+    return () => clearInterval(timer)
+  }, [])
+
+  const remainingMs = new Date(to).getTime() - now
+  const ended = remainingMs <= 0
+
+  if (size === 'lg') {
+    const totalSec = Math.max(Math.floor(remainingMs / 1000), 0)
+    const min = String(Math.floor(totalSec / 60)).padStart(2, '0')
+    const sec = String(totalSec % 60).padStart(2, '0')
+
+    return (
+      <div className='flex flex-col items-end flex-shrink-0'>
+        <span className={`flex items-center gap-1 text-xs font-semibold uppercase ${ended ? 'text-gray-500' : 'text-red-500'}`}>
+          {!ended && <span className='w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse' />}
+          {ended ? 'Ended' : 'Ends in'}
+        </span>
+        <div className='flex items-start gap-1 font-bold tabular-nums text-gray-900 dark:text-white'>
+          <CountdownUnit value={min} label='Mins' />
+          <span className='text-3xl leading-none'>:</span>
+          <CountdownUnit value={sec} label='Secs' />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <span className={`flex items-center gap-1 text-sm font-bold tabular-nums ${ended ? 'text-gray-500' : 'text-red-500'}`}>
+      {!ended && <span className='w-2 h-2 rounded-full bg-red-500 animate-pulse' />}
+      {ended ? 'Ended' : `Live · ${formatCountdown(remainingMs)}`}
+    </span>
+  )
+}
+
+function CountdownUnit({ value, label }: { value: string; label: string }) {
+  return (
+    <div className='flex flex-col items-center'>
+      <span className='text-3xl leading-none'>{value}</span>
+      <span className='text-[10px] font-medium uppercase text-gray-500 dark:text-gray-400'>{label}</span>
     </div>
   )
 }

@@ -27,8 +27,8 @@ Hiển thị các event đang mở giống trang chủ polymarket.com. User lọ
 
 ### 2. Lọc market (trong SDK)
 
-`mapGammaEvent` (`services/polymarket/gamma`) chỉ giữ market **Yes/No đang mở**:
-- `outcomes` đúng là `['Yes', 'No']` và có 2 `clobTokenIds`
+`mapGammaEvent` (`services/polymarket/gamma`) chỉ giữ market **nhị phân đang mở** (`Yes/No` hoặc `Up/Down`, xem `BINARY_OUTCOME_PAIRS`):
+- `outcomes` là `['Yes', 'No']` hoặc `['Up', 'Down']` và có 2 `clobTokenIds`
 - `closed = false` và `acceptingOrders !== false`
 
 Event không còn market nào sau khi lọc thì bị bỏ khỏi list.
@@ -52,7 +52,7 @@ Thứ tự market trong event:
 **Select "End date"** (`EXPIRY_SORT_OPTIONS`): `Any` / `Ending soonest` / `Ending latest`.
 - Chọn 1 option thì **ghi đè** chip sort (chip mất trạng thái active): `order = endDate`, `ascending` theo option.
 - Gửi thêm `end_date_min = now`, để loại event đã quá `endDate` nhưng chưa đóng (đang chờ resolve). Nếu không, "Ending soonest" bị đẩy các event từ 2025 lên đầu.
-- Gửi thêm `exclude_tag_id = 102127` (tag `up-or-down`). Các event sắp hết hạn gần như toàn là "BTC/ETH Up or Down" 5 phút, outcome là `Up`/`Down` (không phải Yes/No) nên bị SDK lọc hết, khiến list rỗng.
+- Gửi thêm `exclude_tag_id = 102127` (tag `up-or-down`). Các event sắp hết hạn gần như toàn là "BTC/ETH Up or Down" 5 phút, sẽ chiếm hết các trang đầu. Khung BTC 5 phút hiện tại đã được ghim riêng lên đầu gallery (xem `changelog/2026-10-14-btc-updown-5m.md`).
 - Bấm 1 chip sort thì reset select về `Any`.
 
 ### 4. Category
@@ -95,4 +95,5 @@ Chip theo `POLYMARKET_CATEGORIES` (Sports, Politics, Crypto…). `id` là tag id
 - Search text chỉ lọc event **đã tải về**, không gọi API search. Event chưa tải (trang sau) sẽ không tìm thấy.
 - `end_date_min` lấy thời điểm lúc chọn sort (memo theo sort/category), không tự cập nhật theo thời gian thực.
 - Sau khi exclude `up-or-down`, trang đầu vẫn có thể bị lọc bớt vài event không phải Yes/No (VD Sports còn ~35/50), nhưng không còn rỗng.
-- Event có market không phải Yes/No (VD `Up`/`Down`, tên đội) không hiển thị và không trade được trong app.
+- Event có market không phải Yes/No hay Up/Down (VD tên đội) không hiển thị và không trade được trong app.
+- Card "BTC Up or Down 5m" (`UP_DOWN_SERIES.BTC_5M`) được ghim ở đầu gallery khi category là All/Crypto, có đồng hồ đếm ngược và tự chuyển sang khung mới mỗi 5 phút.

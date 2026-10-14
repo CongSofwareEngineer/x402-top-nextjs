@@ -55,8 +55,8 @@ export const EXPIRY_SORT_ORDER = 'endDate'
 
 /**
  * Gamma tags hidden from the end-date sort. `up-or-down` = recurring 5m/15m crypto
- * Up/Down events: they flood the soonest-ending pages but have no Yes/No market,
- * so the SDK drops them all and the gallery comes back empty.
+ * Up/Down events: they would flood every soonest-ending page (the current BTC 5m
+ * window is pinned on top instead — see `UP_DOWN_SERIES`).
  */
 export const EXPIRY_SORT_EXCLUDED_TAG_IDS = ['102127']
 
@@ -70,6 +70,21 @@ export const EXPIRY_SORT_OPTIONS: { key: ExpirySortKey; label: string; ascending
   { key: 'endingSoon', label: 'Ending soonest', ascending: true },
   { key: 'endingLatest', label: 'Ending latest', ascending: false },
 ]
+
+/**
+ * Recurring crypto Up/Down series pinned on top of the Markets gallery (like
+ * polymarket.com). Event slug = `${slugPrefix}-${windowStart}` where
+ * `windowStart` is unix seconds aligned to `intervalSec`.
+ * `tagId` = gallery category the card is shown in (besides "All").
+ */
+export const UP_DOWN_SERIES = {
+  BTC_5M: { slugPrefix: 'btc-updown-5m', intervalSec: 300, tagId: '21' },
+} as const
+
+export type UpDownSeries = (typeof UP_DOWN_SERIES)[keyof typeof UP_DOWN_SERIES]
+
+/** Gamma refresh of the pinned Up/Down event (volume, status). Prices are live via the CLOB WebSocket. */
+export const UP_DOWN_REFETCH_MS = 30_000
 
 /** Timezone every date in the Polymarket UI is shown in (API dates are UTC). */
 export const DISPLAY_TIME_ZONE = 'Asia/Ho_Chi_Minh'

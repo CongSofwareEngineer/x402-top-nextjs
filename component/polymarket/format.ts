@@ -74,3 +74,13 @@ export function formatDateTime(value: string | number | Date) {
 
   return p ? `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}` : ''
 }
+
+/** Remaining time as `m:ss` (or `h:mm:ss`), clamped at 0 — Up/Down window countdown. */
+export function formatCountdown(ms: number) {
+  const total = Math.max(Math.floor(ms / 1000), 0)
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const sec = String(total % 60).padStart(2, '0')
+
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`
+}

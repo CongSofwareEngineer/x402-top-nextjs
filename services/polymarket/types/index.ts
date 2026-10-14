@@ -207,12 +207,21 @@ export interface OrderBook {
   assetId: string
   timestamp?: string
   hash?: string
-  bids: { price: number; size: number }[]
-  asks: { price: number; size: number }[]
+  bids: BookLevel[]
+  asks: BookLevel[]
   minOrderSize: number
   tickSize: number
   negRisk: boolean
   lastTradePrice?: number
+}
+
+/** Live book of one outcome token from the CLOB WebSocket (bids high→low, asks low→high). */
+export interface LiveQuote {
+  assetId: string
+  bids: BookLevel[]
+  asks: BookLevel[]
+  bestBid?: number
+  bestAsk?: number
 }
 
 /** Bridge API. */

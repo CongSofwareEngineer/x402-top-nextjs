@@ -15,12 +15,14 @@ export enum API_POLYMARKET {
   GAMMA = 'https://gamma-api.polymarket.com',
   /** CLOB API — order books. */
   CLOB = 'https://clob.polymarket.com',
+  /** CLOB market WebSocket — live order book updates. */
+  CLOB_WS = 'wss://ws-subscriptions-clob.polymarket.com/ws/market',
   /** Data API v2 — wallet portfolios, positions, activity. */
   DATA = 'https://data-api.polymarket.com',
 }
 
 /** Public builder attribution code (sent as `X-Builder-Code`). Builder API secrets stay in server env. */
-export const BUILDER_CODE = '0xdf09a57d8a75afa56ff0e919432d5dcde3500a7364bc0626333704b506d57ee9'
+export const BUILDER_CODE = '0x79c84ef72719578065fef7b0cfd9f467a920d2824db3eed74ac3c8303ba49e0f'
 
 export const POLYGON_CHAIN_ID = 137
 
@@ -34,6 +36,27 @@ export const MIN_MARKET_ORDER_USD = 1
 
 /** Max price move a market order tolerates beyond the quoted worst level (5%). */
 export const MARKET_ORDER_SLIPPAGE = 0.05
+
+/**
+ * Outcome pairs (lower-cased, in token order) of the binary markets the SDK
+ * keeps: classic `Yes/No` and recurring crypto `Up/Down` (e.g. BTC 5m).
+ */
+export const BINARY_OUTCOME_PAIRS: readonly (readonly [string, string])[] = [
+  ['yes', 'no'],
+  ['up', 'down'],
+]
+
+/** Keep-alive `PING` interval of the CLOB WebSocket (server drops idle sockets). */
+export const CLOB_WS_PING_MS = 10_000
+
+/**
+ * Max rate the CLOB WebSocket emits book updates. Busy markets (BTC 5m) send
+ * hundreds of messages per second — they are coalesced so the UI re-renders ~5×/s.
+ */
+export const CLOB_WS_FLUSH_MS = 200
+
+/** Delay before reconnecting a dropped CLOB WebSocket. */
+export const CLOB_WS_RECONNECT_MS = 2_000
 
 export const ORDER_SIDE = {
   BUY: 'BUY',

@@ -8,10 +8,11 @@
 export * from './types'
 export * from './constants'
 export { PolymarketApiError } from './client'
-export { listEvents, getEventBySlug, getMarketsBySlugs, getProfileByAddress, getProfileWallet } from './gamma'
+export { listEvents, getEventBySlug, getUpDownEvent, upDownWindowStart, getMarketsBySlugs, getProfileByAddress, getProfileWallet } from './gamma'
 export { getPortfolioValue, getPositions, getActivity, getUserStats } from './data'
 export { getSupportedAssets, getDepositAddress, createWithdrawalAddress, getBridgeStatus } from './bridge'
 export { getOrderBook } from './clob'
+export { subscribeMarketQuotes } from './clob/ws'
 export {
   floor2,
   ceil2,
@@ -24,6 +25,7 @@ export {
   yesChance,
   outcomeQuotes,
   marketLabel,
+  outcomeName,
   isMarketEnded,
   parsePolymarketUrl,
 } from './market'

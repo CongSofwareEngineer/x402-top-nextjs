@@ -1,7 +1,7 @@
 import type { GammaEventRow, GammaMarketRow } from './type'
 
 import { PolymarketApiError, baseUrl, parseJsonArray, requestJson, toNumber } from '../client'
-import { BUILDER_CODE } from '../constants'
+import { BINARY_OUTCOME_PAIRS, BUILDER_CODE } from '../constants'
 import { type EventsResult, type Market, type MarketFilters, type PolyEvent, type PublicProfile } from '../types'
 
 function mapGammaMarket(row: GammaMarketRow): Market {
@@ -46,14 +46,13 @@ function mapGammaMarket(row: GammaMarketRow): Market {
   }
 }
 
-/** Open market whose outcomes are exactly `Yes` / `No`. */
-function isYesNoMarket(market: Market): boolean {
+/** Open binary market whose outcomes are `Yes` / `No` or `Up` / `Down` (see `BINARY_OUTCOME_PAIRS`). */
+function isBinaryMarket(market: Market): boolean {
   const [first, second] = market.outcomes.map((o) => o.toLowerCase())
 
   return (
     market.outcomes.length === 2 &&
-    first === 'yes' &&
-    second === 'no' &&
+    BINARY_OUTCOME_PAIRS.some(([a, b]) => first === a && second === b) &&
     market.clobTokenIds.length === 2 &&
     !market.closed &&
     market.acceptingOrders !== false
@@ -61,7 +60,7 @@ function isYesNoMarket(market: Market): boolean {
 }
 
 /**
- * Map a Gamma event keeping only its open Yes/No markets.
+ * Map a Gamma event keeping only its open binary (Yes/No, Up/Down) markets.
  * Neg-risk events (mutually exclusive outcomes) are ordered by chance like
  * polymarket.com; the rest (e.g. "by date…") keep Gamma's threshold order.
  */
@@ -69,7 +68,7 @@ function mapGammaEvent(row: GammaEventRow): PolyEvent {
   const negRisk = !!row.negRisk
   const markets = (row.markets ?? [])
     .map((m) => ({ ...mapGammaMarket(m), negRisk: m.negRisk ?? negRisk, eventId: row.id, eventSlug: row.slug ?? undefined }))
-    .filter(isYesNoMarket)
+    .filter(isBinaryMarket)
     .sort((a, b) => (negRisk ? (b.outcomePrices[0] ?? 0) - (a.outcomePrices[0] ?? 0) : (a.groupItemThreshold ?? 0) - (b.groupItemThreshold ?? 0)))
 
   return {
@@ -91,7 +90,7 @@ function mapGammaEvent(row: GammaEventRow): PolyEvent {
 /**
  * List events via Gamma `/events/keyset` — the same feed polymarket.com uses
  * for its homepage (Trending = `order=volume24hr`). Events left without any
- * Yes/No market are dropped.
+ * binary market are dropped.
  */
 export async function listEvents(filters: MarketFilters = {}): Promise<EventsResult> {
   const params = new URLSearchParams()
@@ -119,6 +118,24 @@ export async function getEventBySlug(slug: string): Promise<PolyEvent | null> {
   const row = rows?.[0]
 
   return row ? mapGammaEvent(row) : null
+}
+
+/**
+ * Start (unix seconds) of the recurring Up/Down window containing `nowMs`.
+ * Windows are aligned to `intervalSec` (5m = 300 → 4:10:00, 4:15:00…).
+ */
+export function upDownWindowStart(intervalSec: number, nowMs = Date.now()): number {
+  const nowSec = Math.floor(nowMs / 1000)
+
+  return nowSec - (nowSec % intervalSec)
+}
+
+/**
+ * Recurring crypto Up/Down event of one window, e.g. BTC 5m:
+ * slug `btc-updown-5m-<windowStart>` (same slug polymarket.com links to).
+ */
+export async function getUpDownEvent(slugPrefix: string, windowStart: number): Promise<PolyEvent | null> {
+  return getEventBySlug(`${slugPrefix}-${windowStart}`)
 }
 
 /**

@@ -5,6 +5,8 @@ import { signerFrom } from '@polymarket/client/viem'
 
 import { toNumber } from '../client'
 import {
+  API_POLYMARKET,
+  BUILDER_CODE,
   CLOB_ASSET_TYPE,
   CONTRACTS,
   ORDER_SIDE,
@@ -254,8 +256,22 @@ export async function placeMarketOrder(client: TradingClient, order: MarketOrder
   const orderType = order.orderType === 'FOK' ? OrderType.FOK : OrderType.FAK
   const response =
     order.side === ORDER_SIDE.BUY
-      ? await client.placeMarketOrder({ assetId: order.tokenId, side: OrderSide.BUY, amount: order.amount, maxPrice: order.maxPrice, orderType })
-      : await client.placeMarketOrder({ assetId: order.tokenId, side: OrderSide.SELL, shares: order.shares, minPrice: order.minPrice, orderType })
+      ? await client.placeMarketOrder({
+          assetId: order.tokenId,
+          side: OrderSide.BUY,
+          amount: order.amount,
+          maxPrice: order.maxPrice,
+          orderType,
+          builderCode: BUILDER_CODE,
+        })
+      : await client.placeMarketOrder({
+          assetId: order.tokenId,
+          side: OrderSide.SELL,
+          shares: order.shares,
+          minPrice: order.minPrice,
+          orderType,
+          builderCode: BUILDER_CODE,
+        })
 
   if (!response.ok) throw new Error(response.message)
 

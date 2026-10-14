@@ -1,9 +1,24 @@
 'use client'
 
+import { useEffect, useMemo, useState } from 'react'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 
 import { REACT_QUERY_POLY_MARKET } from '@/constants/reactQuery'
-import { getEventBySlug, getMarketsBySlugs, getOrderBook, isMarketEnded, listEvents, type MarketFilters, type PolyEvent } from '@/services/polymarket'
+import { UP_DOWN_REFETCH_MS, type UpDownSeries } from '@/constants/polymarket'
+import {
+  getEventBySlug,
+  getMarketsBySlugs,
+  getOrderBook,
+  getUpDownEvent,
+  isMarketEnded,
+  listEvents,
+  subscribeMarketQuotes,
+  upDownWindowStart,
+  type LiveQuote,
+  type Market,
+  type MarketFilters,
+  type PolyEvent,
+} from '@/services/polymarket'
 
 /** Homepage event feed (Gamma `/events/keyset`), appended page by page. */
 export function usePolyMarketEvents(filters: Omit<MarketFilters, 'cursor'>) {
@@ -29,15 +44,75 @@ export function usePolyMarketEvent(slug: string | undefined, initialData?: PolyE
   })
 }
 
-/** CLOB orderbook for an outcome token. */
-export function usePolyMarketOrderBook(tokenId: string | undefined) {
+/**
+ * Current window of a recurring Up/Down series (e.g. BTC 5m). The window start
+ * is part of the query key and rolls over at each boundary, so the next
+ * window's event is fetched automatically.
+ */
+export function usePolyMarketUpDownEvent(series: UpDownSeries) {
+  const [windowStart, setWindowStart] = useState(() => upDownWindowStart(series.intervalSec))
+
+  useEffect(() => {
+    const nextStartMs = (windowStart + series.intervalSec) * 1000
+    const timer = setTimeout(() => setWindowStart(upDownWindowStart(series.intervalSec)), Math.max(nextStartMs - Date.now(), 0))
+
+    return () => clearTimeout(timer)
+  }, [windowStart, series.intervalSec])
+
   return useQuery({
+    queryKey: [REACT_QUERY_POLY_MARKET.UP_DOWN_EVENT, series.slugPrefix, windowStart],
+    queryFn: () => getUpDownEvent(series.slugPrefix, windowStart),
+    staleTime: UP_DOWN_REFETCH_MS,
+    refetchInterval: UP_DOWN_REFETCH_MS,
+  })
+}
+
+/** Live CLOB book of one token over WebSocket; `undefined` until its first snapshot. */
+function useLiveQuote(tokenId: string | undefined) {
+  const [quote, setQuote] = useState<LiveQuote>()
+
+  useEffect(() => {
+    if (!tokenId) return
+
+    return subscribeMarketQuotes([tokenId], setQuote)
+  }, [tokenId])
+
+  // Drop the previous token's book until the new one arrives.
+  return quote?.assetId === tokenId ? quote : undefined
+}
+
+/**
+ * CLOB orderbook for an outcome token. REST `/book` gives the snapshot + trading
+ * constraints (tick size, min size); bids/asks are then kept live via WebSocket.
+ * `refetch()` still returns the REST book (used to re-quote right before submit).
+ */
+export function usePolyMarketOrderBook(tokenId: string | undefined) {
+  const query = useQuery({
     queryKey: [REACT_QUERY_POLY_MARKET.ORDER_BOOK, tokenId],
     queryFn: () => getOrderBook(tokenId!),
     enabled: !!tokenId,
     staleTime: 5_000,
     refetchInterval: 10_000,
   })
+  const live = useLiveQuote(tokenId)
+  const data = useMemo(() => (query.data && live ? { ...query.data, bids: live.bids, asks: live.asks } : query.data), [query.data, live])
+
+  return { ...query, data }
+}
+
+/**
+ * Market with live best bid/ask of its first (Yes/Up) token. Chance = midpoint
+ * like polymarket.com — Gamma's `outcomePrices` is cached and lags the book.
+ */
+export function usePolyMarketLiveMarket(market: Market | undefined) {
+  const live = useLiveQuote(market?.clobTokenIds[0])
+
+  return useMemo(() => {
+    if (!market || live?.bestBid == null || live.bestAsk == null) return market
+    const mid = (live.bestBid + live.bestAsk) / 2
+
+    return { ...market, bestBid: live.bestBid, bestAsk: live.bestAsk, outcomePrices: [mid, 1 - mid] }
+  }, [market, live])
 }
 
 /** Live/ended state per market slug (`true` = ended), e.g. for the History tab. */

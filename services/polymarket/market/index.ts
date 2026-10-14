@@ -170,6 +170,11 @@ export function outcomeQuotes(market: Market, side: OrderSide) {
   return side === ORDER_SIDE.BUY ? { yes: ask, no: 1 - bid } : { yes: bid, no: 1 - ask }
 }
 
+/** Outcome name at `index` (0 = Yes/Up, 1 = No/Down) as Gamma returns it. */
+export function outcomeName(market: Market, index: number) {
+  return market.outcomes[index] ?? ''
+}
+
 /** Label of a market inside its event (`December 31`) or its full question. */
 export function marketLabel(market: Market) {
   return market.groupItemTitle || market.question || ''
