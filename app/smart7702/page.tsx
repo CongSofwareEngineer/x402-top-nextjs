@@ -525,30 +525,30 @@ export default function Home() {
       //   delegate: address,
       // })
 
-      // const messageHash = hashAuthorization({
-      //   chainId: chainId as number,
-      //   nonce: nonceCurrent,
-      //   address: DELEGATE_CONTRACT_ADDRESS as `0x${string}`,
-      // })
+      const messageHash = hashAuthorization({
+        chainId: chainId as number,
+        nonce: nonceCurrent,
+        address: DELEGATE_CONTRACT_ADDRESS as `0x${string}`,
+      })
 
       // console.log({ messageHash })
 
-      // const signature = await signMessageAsync({
-      //   message: messageHash,
-      // })
+      const signature = await signMessageAsync({
+        message: messageHash,
+      })
 
       // // setStatus(`📝 Nonce hiện tại: ${nonce}. Đang request ký Authorization trên ví...`)
       // // // ─── BƯỚC 4: Parse signature thành r, s, v để dùng cho Type 4 TX ───
-      // const { r, s, v, yParity } = parseSignature(signature as Hex)
+      const { r, s, v, yParity } = parseSignature(signature as Hex)
 
       const authorizationObject = {
         chainId: chainId,
         address: DELEGATE_CONTRACT_ADDRESS,
         nonce: nonceCurrent,
-        // r,
-        // s,
-        // v: Number(v),
-        // yParity: yParity || v,
+        r,
+        s,
+        v: Number(v),
+        yParity: yParity || v,
       }
 
       console.log('====================================')
